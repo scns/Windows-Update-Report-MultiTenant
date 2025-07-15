@@ -22,7 +22,13 @@ Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredent
 $Query = "DeviceTvmSoftwareVulnerabilities
 | distinct DeviceName, RecommendedSecurityUpdate
 | summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
-| extend Count = array_length(MissingUpdates)"
+| extend Count = array_length(MissingUpdates)
+| join kind=leftouter (
+    DeviceInfo
+    | summarize arg_max(Timestamp, *) by DeviceName
+    | project DeviceName, LastSeen=Timestamp, LoggedOnUsers
+) on DeviceName
+"
 
 #Format Query as JSON
 $Body = @{
@@ -38,7 +44,9 @@ $ResultsTable = $Result.results | ForEach-Object {
     [PSCustomObject]@{
         Device = $_.DeviceName
         "Missing Updates" = ($MissingUpdates)
-        Count = ($_.Count - 1)
+        "Count" = ($_.Count - 1)
+        "LastSeen" = $_.LastSeen
+        "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
     }
 }
 
@@ -54,6 +62,8 @@ foreach ($row in $Result.results) {
         $MissingUpdateTable += [PSCustomObject]@{
             "Missing Update" = $update
             "Device" = $row.DeviceName
+            "LastSeen" = $row.LastSeen
+            "LoggedOnUsers" = if ($row.LoggedOnUsers -is [System.Array]) { $row.LoggedOnUsers -join ', ' } else { $row.LoggedOnUsers }
         }
     }
 }
