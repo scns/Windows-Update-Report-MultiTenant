@@ -44,8 +44,24 @@ $ResultsTable = $Result.results | ForEach-Object {
 
 #Export the results
 $DateStamp = Get-Date -Format "yyyyMMdd"
-$ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report.csv"
+$ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
 $ResultsTable | Export-Csv -NoTypeInformation -path $ExportPath
+
+# Create a table: Missing Update -> Devices
+$MissingUpdateTable = @()
+foreach ($row in $Result.results) {
+    foreach ($update in $row.MissingUpdates) {
+        $MissingUpdateTable += [PSCustomObject]@{
+            "Missing Update" = $update
+            "Device" = $row.DeviceName
+        }
+    }
+}
+
+# Export Missing Update -> Devices table
+$ExportPathUpdates = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
+$MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
+
 
 #Disconnect from MG Graph
 Disconnect-MgGraph
