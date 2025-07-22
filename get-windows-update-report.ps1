@@ -76,3 +76,167 @@ $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
 #Disconnect from MG Graph
 Disconnect-MgGraph
 }
+
+# ...existing code...
+
+# Verzamel alle Overview-bestanden
+$OverviewFiles = Get-ChildItem -Path ".\exports" -Filter "*_Overview.csv" | Sort-Object Name
+
+# Haal de totalen per dag per klant op
+$CountsPerDayPerCustomer = @{}
+$LatestDatePerCustomer = @{}
+$LatestCsvPerCustomer = @{}
+foreach ($file in $OverviewFiles) {
+    $csv = Import-Csv $file.FullName
+    $TotalCount = ($csv | Measure-Object -Property Count -Sum).Sum
+    $parts = $file.Name -split "_"
+    $Date = $parts[0]
+    $Customer = $parts[1]
+    if (-not $CountsPerDayPerCustomer.ContainsKey($Customer)) {
+        $CountsPerDayPerCustomer[$Customer] = @()
+    }
+    $CountsPerDayPerCustomer[$Customer] += [PSCustomObject]@{
+        Date = $Date
+        TotalCount = $TotalCount
+    }
+    # Bepaal de laatste datum per klant
+    if (-not $LatestDatePerCustomer.ContainsKey($Customer) -or ($Date -gt $LatestDatePerCustomer[$Customer])) {
+        $LatestDatePerCustomer[$Customer] = $Date
+        $LatestCsvPerCustomer[$Customer] = $csv
+    }
+}
+
+# Genereer Chart.js datasets per klant
+$ChartDatasets = ""
+$ChartLabels = @()
+foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
+    $Data = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
+    $Labels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
+    if ($Labels.Count -gt $ChartLabels.Count) { $ChartLabels = $Labels }
+    $Color = "rgb($(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255))"
+    $ChartDatasets += @"
+        {
+            label: '$Customer',
+            data: [$Data],
+            borderColor: '$Color',
+            backgroundColor: '$Color',
+            fill: false,
+            tension: 0.2
+        },5
+"@
+}
+$ChartLabelsString = $ChartLabels -join ","
+
+# Genereer tabbladen en tabellen voor alleen de laatste datum per klant
+$CustomerTabs = ""
+$CustomerTables = ""
+foreach ($Customer in $LatestCsvPerCustomer.Keys) {
+    $TableRows = ""
+    foreach ($row in $LatestCsvPerCustomer[$Customer]) {
+        $TableRows += "<tr><td>$($row.Device)</td><td>$($row.'Missing Updates')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+    }
+    $CustomerTabs += "<button class='tablinks' onclick=""openCustomer(event, '$Customer')"">$Customer</button>"
+    $CustomerTables += @"
+    <div id="$Customer" class="tabcontent" style="display:none">
+        <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
+        <table id="overviewTable_$Customer" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Missing Updates</th>
+                    <th>Count</th>
+                    <th>LastSeen</th>
+                    <th>LoggedOnUsers</th>
+                </tr>
+            </thead>
+            <tbody>
+                $TableRows
+            </tbody>
+        </table>
+    </div>
+"@
+}
+
+$Html = @"
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Windows Update Overview</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 1200px; margin: auto; }
+        canvas { background: #fff; }
+        table.dataTable thead th { background: #eee; }
+        .tab { overflow: hidden; border-bottom: 1px solid #ccc; }
+        .tab button { background-color: #f1f1f1; float: left; border: none; outline: none; cursor: pointer; padding: 10px 20px; transition: 0.3s; }
+        .tab button:hover { background-color: #ddd; }
+        .tab button.active { background-color: #ccc; }
+        .tabcontent { display: none; padding: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Windows Update Overview</h1>
+    <h2>Totale Count per dag per klant</h2>
+    <canvas id="countChart" height="100"></canvas>
+    <div class="tab">
+        $CustomerTabs
+    </div>
+    $CustomerTables
+</div>
+<script>
+    // Chart.js
+    const ctx = document.getElementById('countChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [$ChartLabelsString],
+            datasets: [
+                $ChartDatasets
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true } }
+        }
+    });
+
+    // Tabs
+    function openCustomer(evt, customerName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(customerName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+    // DataTables
+    `$(document).ready(function() {
+        $("table.display").each(function(){
+            `$(this).DataTable({
+                "order": [[2, "desc"]],
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
+                }
+            });
+        });
+        // Open eerste tab standaard
+       // $(".tablinks").first().click();
+    });
+</script>
+</body>
+</html>
+"@
+
+$HtmlPath = ".\exports\Windows_Update_Overview.html"
+Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
