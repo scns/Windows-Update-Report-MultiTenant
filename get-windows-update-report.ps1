@@ -20,13 +20,14 @@ Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredent
 
 #Create Query
 $Query = "DeviceTvmSoftwareVulnerabilities
-| distinct DeviceName, RecommendedSecurityUpdate
+| distinct DeviceName, RecommendedSecurityUpdate, OSPlatform
+| where OSPlatform != 'Linux'
 | summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
 | extend Count = array_length(MissingUpdates)
 | join kind=leftouter (
     DeviceInfo
     | summarize arg_max(Timestamp, *) by DeviceName
-    | project DeviceName, LastSeen=Timestamp, LoggedOnUsers
+    | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform
 ) on DeviceName
 "
 
@@ -77,6 +78,7 @@ $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
 Disconnect-MgGraph
 }
 
+# ...existing code...
 
 # Verzamel alle Overview-bestanden
 $OverviewFiles = Get-ChildItem -Path ".\exports" -Filter "*_Overview.csv" | Sort-Object Name
@@ -121,7 +123,7 @@ foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
             backgroundColor: '$Color',
             fill: false,
             tension: 0.2
-        },5
+        },
 "@
 }
 $ChartLabelsString = $ChartLabels -join ","
@@ -230,7 +232,7 @@ $Html = @"
             });
         });
         // Open eerste tab standaard
-       // $(".tablinks").first().click();
+        `$(".tablinks").first().click();
     });
 </script>
 </body>
