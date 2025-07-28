@@ -58,13 +58,13 @@ Install-Module Microsoft.Graph -Scope CurrentUser
 ## Gebruik
 
 1. Plaats je `credentials.json` in de projectmap.
-1. Start het script:
+2. Start het script:
 
 ```powershell
 .\get-windows-update-report.ps1
 ```
 
-1. De resultaten vind je in de map `exports`, inclusief een HTML-dashboard (`Windows_Update_Overview.html`).
+3. De resultaten vind je in de map `exports`, inclusief een HTML-dashboard (`Windows_Update_Overview.html`).
 
 ## Opmerkingen
 
