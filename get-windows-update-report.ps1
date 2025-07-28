@@ -23,8 +23,13 @@ Maarten Schmeitz (info@scns.nl  | https://www.scns.nl)
 2025-07-28
 
 .VERSIE
-1.0.0
+1.0.1
 #>
+
+# Controleer of de exports directory bestaat, zo niet: maak hem aan
+if (-not (Test-Path -Path ".\exports" -PathType Container)) {
+    New-Item -Path ".\exports" -ItemType Directory | Out-Null
+}
 
 #Import JSON
 # Read the JSON file
