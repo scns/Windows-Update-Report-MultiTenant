@@ -17,7 +17,7 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 3. Bekijk de resultaten in de map 'exports'.
 
 .AUTEUR
-Maarten Schmeitz (info@scns.nl  | https://www.scns.nl)
+Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
 2025-07-28
