@@ -1,5 +1,7 @@
 # Windows Update Report MultiTenant
 
+![Dashboard voorbeeld](images/001.png)
+
 Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-updates per device voor meerdere tenants via Microsoft Graph. Het resultaat is een dynamisch HTML-dashboard met filterbare tabellen en grafieken.
 
 ## Functionaliteit
