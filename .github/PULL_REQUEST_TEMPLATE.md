@@ -1,3 +1,4 @@
+# PullRequest
 <!--
   You are amazing! Thanks for contributing to our project!
   Please, DO NOT DELETE ANY TEXT from this template! (unless instructed).
@@ -6,7 +7,8 @@
   Je bent geweldig! Bedankt voor je bijdrage aan ons project!
    VERWIJDER GEEN TEKST van dit sjabloon! (tenzij geïnstrueerd).
 -->
-## What does this implement/fix? / Wat implementeert/repareert dit? 
+
+## What does this implement/fix? / Wat implementeert/repareert dit?
 
 <!--
   If your PR contains a breaking change for existing users, it is important
@@ -23,7 +25,7 @@
    Opmerking: verwijder deze sectie als deze PR GEEN belangrijke wijziging is.
 -->
 
-## Proposed change / Voorgestelde verandering.
+## Proposed change / Voorgestelde verandering
 
 <!--
   Describe the big picture of your changes here to communicate to the
@@ -38,8 +40,8 @@
    in de rubriek aanvullende informatie.
 -->
 
+## Types of changes / Soorten wijzigingen
 
-## Types of changes / Soorten wijzigingen .
 <!--
   What type of change does your PR introduce to the myESPHOme?
   NOTE: Please, check only 1! box!
@@ -95,7 +97,7 @@
 
 ```
 
-## Checklist / Checklijst:
+## Checklist / Checklijst
 <!--
   Put an `x` in the boxes that apply. You can also fill these out after
   creating the PR. If you're unsure about any of them, don't hesitate to ask.
