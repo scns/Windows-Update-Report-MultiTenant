@@ -1,4 +1,10 @@
+
 # Windows Update Report MultiTenant
+
+| Repository Status | Windows Update Report Repo |
+| :--- | :--- |
+|  [![last commit time][github-last-commit]][github-master] [![GitHub Activity][commits-shield]][commits] | |
+| [![License][license-shield]](LICENSE) [![Forks][forks-shield]][forks-url] [![Stargazers][stars-shield]][stars-url] [![Issues][issues-shield]][issues-url] | [![Contributors][contributors-shield]][contributors-url] [![GitHub release](https://img.shields.io/github/release/scns/Windows-Update-Report-MultiTenant.svg)](https://GitHub.com/scns/Windows-Update-Report-MultiTenant/releases)
 
 ![Dashboard voorbeeld](images/001.png)
 
@@ -77,3 +83,17 @@ Install-Module Microsoft.Graph -Scope CurrentUser
 ---
 
 © 2025 by Maarten Schmeitz
+
+[commits-shield]: https://img.shields.io/github/commit-activity/m/scns/Windows-Update-Report-MultiTenant.svg
+[commits]: https://github.com/scns/Windows-Update-Report-MultiTenant/commits/main
+[github-last-commit]: https://img.shields.io/github/last-commit/scns/Windows-Update-Report-MultiTenant.svg?style=plasticr
+[github-master]: https://github.com/scns/Windows-Update-Report-MultiTenant/commits/main
+[license-shield]: https://img.shields.io/github/license/scns/Windows-Update-Report-MultiTenant.svg
+[contributors-url]: https://github.com/scns/Windows-Update-Report-MultiTenant/graphs/contributors
+[contributors-shield]: https://img.shields.io/github/contributors/scns/Windows-Update-Report-MultiTenant.svg
+[forks-shield]: https://img.shields.io/github/forks/scns/Windows-Update-Report-MultiTenant.svg
+[forks-url]: https://github.com/scns/Windows-Update-Report-MultiTenant/network/members
+[stars-shield]: https://img.shields.io/github/stars/scns/Windows-Update-Report-MultiTenant.svg
+[stars-url]: https://github.com/scns/Windows-Update-Report-MultiTenant/stargazers
+[issues-shield]: https://img.shields.io/github/issues/scns/Windows-Update-Report-MultiTenant.svg
+[issues-url]: https://github.com/scns/Windows-Update-Report-MultiTenant/issues
