@@ -1,3 +1,31 @@
+<#
+.SYNOPSIS
+Genereert een Windows Update rapportage voor meerdere tenants via Microsoft Graph.
+
+.DESCRIPTION
+Dit script haalt per tenant de ontbrekende Windows-updates op via de Microsoft Graph Threat Hunting API.
+De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met filterbare tabellen en grafieken.
+
+.BENODIGDHEDEN
+- PowerShell 7+
+- Microsoft Graph PowerShell SDK
+- Een Azure AD App Registration per tenant met de juiste permissies
+
+.GEBRUIK
+1. Vul het credentials.json bestand met de juiste tenantgegevens.
+2. Voer het script uit: .\get-windows-update-report.ps1
+3. Bekijk de resultaten in de map 'exports'.
+
+.AUTEUR
+Maarten Schmeitz (info@scns.nl  | https://www.scns.nl)
+
+.LASTEDIT
+2025-07-28
+
+.VERSIE
+1.0.0
+#>
+
 #Import JSON
 # Read the JSON file
 $json = Get-Content -Path ".\credentials.json" -Raw
