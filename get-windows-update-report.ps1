@@ -7,78 +7,75 @@ $data = $json | ConvertFrom-Json
 
 foreach ($cred in $data.LoginCredentials) {
 
-$ClientID = "$($cred.ClientID)"
-$Secret = "$($cred.Secret)"
-$TenantID = "$($cred.TenantID)"
+    $ClientID = "$($cred.ClientID)"
+    $Secret = "$($cred.Secret)"
+    $TenantID = "$($cred.TenantID)"
 
-#Collect App Secret
-$Secret = ConvertTo-SecureString $Secret -AsPlainText -Force
-$ClientSecretCredential = New-Object System.Management.Automation.PSCredential -ArgumentList ($ClientID, $Secret)
+    #Collect App Secret
+    $Secret = ConvertTo-SecureString $Secret -AsPlainText -Force
+    $ClientSecretCredential = New-Object System.Management.Automation.PSCredential -ArgumentList ($ClientID, $Secret)
 
-#Connect to Graph using Application Secret
-Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential
+    #Connect to Graph using Application Secret
+    Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential
 
-#Create Query
-$Query = "DeviceTvmSoftwareVulnerabilities
-| distinct DeviceName, RecommendedSecurityUpdate, OSPlatform
-| where OSPlatform != 'Linux'
-| summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
-| extend Count = array_length(MissingUpdates)
-| join kind=leftouter (
-    DeviceInfo
-    | summarize arg_max(Timestamp, *) by DeviceName
-    | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform
-) on DeviceName
-"
+    #Create Query
+    $Query = "DeviceTvmSoftwareVulnerabilities
+    | distinct DeviceName, RecommendedSecurityUpdate, OSPlatform
+    | where OSPlatform != 'Linux'
+    | summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
+    | extend Count = array_length(MissingUpdates)
+    | join kind=leftouter (
+        DeviceInfo
+        | summarize arg_max(Timestamp, *) by DeviceName
+        | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform
+    ) on DeviceName
+    "
 
-#Format Query as JSON
-$Body = @{
-    Query = $Query
-} | ConvertTo-Json
+    #Format Query as JSON
+    $Body = @{
+        Query = $Query
+    } | ConvertTo-Json
 
-#Run the query
-$Result = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/security/runHuntingQuery" -Body $body
+    #Run the query
+    $Result = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/security/runHuntingQuery" -Body $body
 
-#Format the results into an array
-$ResultsTable = $Result.results | ForEach-Object {
-    $MissingUpdates = $_.MissingUpdates -join ','
-    [PSCustomObject]@{
-        Device = $_.DeviceName
-        "Missing Updates" = ($MissingUpdates)
-        "Count" = ($_.Count - 1)
-        "LastSeen" = $_.LastSeen
-        "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
-    }
-}
-
-#Export the results
-$DateStamp = Get-Date -Format "yyyyMMdd"
-$ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
-$ResultsTable | Export-Csv -NoTypeInformation -path $ExportPath
-
-# Create a table: Missing Update -> Devices
-$MissingUpdateTable = @()
-foreach ($row in $Result.results) {
-    foreach ($update in $row.MissingUpdates) {
-        $MissingUpdateTable += [PSCustomObject]@{
-            "Missing Update" = $update
-            "Device" = $row.DeviceName
-            "LastSeen" = $row.LastSeen
-            "LoggedOnUsers" = if ($row.LoggedOnUsers -is [System.Array]) { $row.LoggedOnUsers -join ', ' } else { $row.LoggedOnUsers }
+    #Format the results into an array
+    $ResultsTable = $Result.results | ForEach-Object {
+        $MissingUpdates = $_.MissingUpdates -join ','
+        [PSCustomObject]@{
+            Device = $_.DeviceName
+            "Missing Updates" = ($MissingUpdates)
+            "Count" = ($_.Count - 1)
+            "LastSeen" = $_.LastSeen
+            "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
         }
     }
+
+    #Export the results
+    $DateStamp = Get-Date -Format "yyyyMMdd"
+    $ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
+    $ResultsTable | Export-Csv -NoTypeInformation -path $ExportPath
+
+    # Create a table: Missing Update -> Devices
+    $MissingUpdateTable = @()
+    foreach ($row in $Result.results) {
+        foreach ($update in $row.MissingUpdates) {
+            $MissingUpdateTable += [PSCustomObject]@{
+                "Missing Update" = $update
+                "Device" = $row.DeviceName
+                "LastSeen" = $row.LastSeen
+                "LoggedOnUsers" = if ($row.LoggedOnUsers -is [System.Array]) { $row.LoggedOnUsers -join ', ' } else { $row.LoggedOnUsers }
+            }
+        }
+    }
+
+    # Export Missing Update -> Devices table
+    $ExportPathUpdates = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
+    $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
+
+    #Disconnect from MG Graph
+    Disconnect-MgGraph
 }
-
-# Export Missing Update -> Devices table
-$ExportPathUpdates = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
-$MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
-
-
-#Disconnect from MG Graph
-Disconnect-MgGraph
-}
-
-# ...existing code...
 
 # Verzamel alle Overview-bestanden
 $OverviewFiles = Get-ChildItem -Path ".\exports" -Filter "*_Overview.csv" | Sort-Object Name
@@ -158,6 +155,33 @@ foreach ($Customer in $LatestCsvPerCustomer.Keys) {
 "@
 }
 
+$DataTablesScript = @'
+$(document).ready(function() {
+    $("table.display").each(function(){
+        var table = $(this).DataTable({
+            "order": [[2, "desc"]],
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
+            }
+        });
+        // Kolomfilters toevoegen
+        $(this).find('thead th').each(function (i) {
+            var title = $(this).text();
+            $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
+            $(this).find("input").on('keyup change', function () {
+                if (table.column(i).search() !== this.value) {
+                    table.column(i).search(this.value).draw();
+                }
+            });
+        });
+    });
+    // Open eerste tab standaard
+    $(".tablinks").first().click();
+});
+'@
+
+$LastRunDate = Get-Date -Format "dd-MM-yyyy"
+
 $Html = @"
 <!DOCTYPE html>
 <html lang="nl">
@@ -168,6 +192,9 @@ $Html = @"
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+    $DataTablesScript
+    </script>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         .container { max-width: 1200px; margin: auto; }
@@ -183,6 +210,7 @@ $Html = @"
 <body>
 <div class="container">
     <h1>Windows Update Overview</h1>
+    <p>Laatst uitgevoerd op: $LastRunDate</p>
     <h2>Totale Count per dag per klant</h2>
     <canvas id="countChart" height="100"></canvas>
     <div class="tab">
@@ -221,19 +249,6 @@ $Html = @"
         document.getElementById(customerName).style.display = "block";
         evt.currentTarget.className += " active";
     }
-    // DataTables
-    `$(document).ready(function() {
-        $("table.display").each(function(){
-            `$(this).DataTable({
-                "order": [[2, "desc"]],
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
-                }
-            });
-        });
-        // Open eerste tab standaard
-        `$(".tablinks").first().click();
-    });
 </script>
 </body>
 </html>
