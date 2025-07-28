@@ -7,7 +7,7 @@ Dit script haalt per tenant de ontbrekende Windows-updates op via de Microsoft G
 De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met filterbare tabellen en grafieken.
 
 .BENODIGDHEDEN
-- PowerShell 7+
+- PowerShell 5+
 - Microsoft Graph PowerShell SDK
 - Een Azure AD App Registration per tenant met de juiste permissies
 
