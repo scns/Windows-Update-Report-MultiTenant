@@ -11,7 +11,7 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 
 ## Benodigdheden
 
-- PowerShell 7+
+- PowerShell 5+
 - Microsoft Graph PowerShell SDK (`Install-Module Microsoft.Graph`)
 - Een Azure AD App Registration per tenant met de juiste permissies
 
