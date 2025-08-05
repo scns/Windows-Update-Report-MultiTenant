@@ -13,22 +13,139 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 
 .GEBRUIK
 1. Vul het credentials.json bestand met de juiste tenantgegevens.
-2. Voer het script uit: .\get-windows-update-report.ps1
-3. Bekijk de resultaten in de map 'exports'.
+2. config.json bevat de export instellingen zoals de export directory, archief directory en het aantal te behouden exports.
+3. Voer het script uit: .\get-windows-update-report.ps1
+4. Bekijk de resultaten in de map 'exports'.
+
 
 .AUTEUR
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
-2025-07-28
+2025-08-05
 
 .VERSIE
-1.0.1
+2.0
 #>
 
+# Import configuratie
+try {
+    $configJson = Get-Content -Path ".\config.json" -Raw
+    $config = $configJson | ConvertFrom-Json
+}
+catch {
+    Write-Error "Fout bij het laden of parsen van 'config.json': $($_.Exception.Message)"
+    Write-Host "Controleer of 'config.json' aanwezig is, leesbaar is, en geldige JSON bevat." -ForegroundColor Red
+    exit 1
+}
+
+# Functie voor het controleren en installeren van PowerShell modules
+function Install-RequiredModules {
+    param(
+        [string[]]$ModuleNames
+    )
+    
+    Write-Host "Controleren van benodigde PowerShell modules..." -ForegroundColor Cyan
+    
+    foreach ($ModuleName in $ModuleNames) {
+        Write-Host "Verwerken van module: $ModuleName" -ForegroundColor White
+        
+        $Module = Get-Module -ListAvailable -Name $ModuleName
+        
+        if (-not $Module) {
+            Write-Host "Module '$ModuleName' niet gevonden. Bezig met installeren..." -ForegroundColor Yellow
+            try {
+                Install-Module -Name $ModuleName -Scope CurrentUser -Force -AllowClobber
+                Write-Host "Module '$ModuleName' succesvol geïnstalleerd." -ForegroundColor Green
+            }
+            catch {
+                Write-Error "Fout bij installeren van module '$ModuleName': $($_.Exception.Message)"
+                throw
+            }
+        }
+        else {
+            Write-Host "Module '$ModuleName' is al aanwezig." -ForegroundColor Green
+        }
+        
+        # Importeer de module met expliciete feedback
+        Write-Host "Importeren van module '$ModuleName'..." -ForegroundColor White
+        try {
+            # Probeer eerst alleen de benodigde commands te importeren
+            Import-Module -Name $ModuleName -Force -ErrorAction Stop
+            Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Fout bij importeren van module '$ModuleName': $($_.Exception.Message)"
+            throw
+        }
+    }
+    
+    Write-Host "Module controle voltooid." -ForegroundColor Green
+}
+
+# Lijst van benodigde modules
+$RequiredModules = @(
+    "Microsoft.Graph.Authentication",
+    "Microsoft.Graph.Security"
+)
+
+# Installeer en importeer benodigde modules
+Install-RequiredModules -ModuleNames $RequiredModules
+
 # Controleer of de exports directory bestaat, zo niet: maak hem aan
-if (-not (Test-Path -Path ".\exports" -PathType Container)) {
-    New-Item -Path ".\exports" -ItemType Directory | Out-Null
+$ExportDir = ".\$($config.exportDirectory)"
+if (-not (Test-Path -Path $ExportDir -PathType Container)) {
+    New-Item -Path $ExportDir -ItemType Directory | Out-Null
+}
+
+# Controleer of de archive directory bestaat, zo niet: maak hem aan
+$ArchiveDir = ".\$($config.archiveDirectory)"
+if (-not (Test-Path -Path $ArchiveDir -PathType Container)) {
+    New-Item -Path $ArchiveDir -ItemType Directory | Out-Null
+}
+
+# Functie voor het verplaatsen van oude export bestanden naar archief
+function Move-OldExportsToArchive {
+    param(
+        [string]$ExportPath,
+        [string]$ArchivePath,
+        [int]$RetentionCount
+    )
+    
+    if ($config.cleanupOldExports -eq $true -and $RetentionCount -gt 0) {
+        Write-Host "Bezig met archiveren van oude export bestanden... (behouden: $RetentionCount per type)" -ForegroundColor Cyan
+        
+        # Groepeer bestanden per type (Overview of ByUpdate) en per klant
+        $AllFiles = Get-ChildItem -Path $ExportPath -Filter "*.csv" | Sort-Object Name -Descending
+        
+        # Groepeer per klant en type
+        $GroupedFiles = $AllFiles | Group-Object { 
+            # Verwacht patroon: Prefix_Customer_Type.csv
+            $parts = $_.Name -split "_"
+            # Controleer of het bestand voldoet aan het verwachte patroon
+            if ($parts.Count -ge 3) {
+                # Controleer of het laatste deel eindigt op .csv
+                $typePart = $parts[-1]
+                if ($typePart -match "^[A-Za-z]+\.csv$") {
+                    return "$($parts[1])_$($typePart)" # CustomerName_Type.csv
+                }
+            }
+            return "Unknown"
+        }
+        
+        foreach ($group in $GroupedFiles) {
+            $FilesToArchive = $group.Group | Select-Object -Skip $RetentionCount
+            
+            if ($FilesToArchive.Count -gt 0) {
+                foreach ($file in $FilesToArchive) {
+                    $DestinationPath = Join-Path -Path $ArchivePath -ChildPath $file.Name
+                    Write-Host "Archiveren: $($file.Name) -> $ArchivePath" -ForegroundColor Yellow
+                    Move-Item -Path $file.FullName -Destination $DestinationPath -Force
+                }
+                Write-Host "Groep '$($group.Name)': $($FilesToArchive.Count) bestanden gearchiveerd." -ForegroundColor Green
+            }
+        }
+    }
 }
 
 #Import JSON
@@ -86,7 +203,7 @@ foreach ($cred in $data.LoginCredentials) {
 
     #Export the results
     $DateStamp = Get-Date -Format "yyyyMMdd"
-    $ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
+    $ExportPath = ".\$($config.exportDirectory)\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
     $ResultsTable | Export-Csv -NoTypeInformation -path $ExportPath
 
     # Create a table: Missing Update -> Devices
@@ -103,15 +220,18 @@ foreach ($cred in $data.LoginCredentials) {
     }
 
     # Export Missing Update -> Devices table
-    $ExportPathUpdates = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
+    $ExportPathUpdates = ".\$($config.exportDirectory)\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
     $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
 
     #Disconnect from MG Graph
     Disconnect-MgGraph
 }
 
+# Voer archivering uit na alle exports
+Move-OldExportsToArchive -ExportPath $ExportDir -ArchivePath $ArchiveDir -RetentionCount $config.exportRetentionCount
+
 # Verzamel alle Overview-bestanden
-$OverviewFiles = Get-ChildItem -Path ".\exports" -Filter "*_Overview.csv" | Sort-Object Name
+$OverviewFiles = Get-ChildItem -Path ".\$($config.exportDirectory)" -Filter "*_Overview.csv" | Sort-Object Name
 
 # Haal de totalen per dag per klant op
 $CountsPerDayPerCustomer = @{}
@@ -287,5 +407,26 @@ $Html = @"
 </html>
 "@
 
-$HtmlPath = ".\exports\Windows_Update_Overview.html"
+$HtmlPath = ".\$($config.exportDirectory)\Windows_Update_Overview.html"
 Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
+
+# Open het HTML bestand automatisch in de standaard webbrowser
+Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
+Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
+try {
+    if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html")))
+    {
+        Start-Process $HtmlPath
+        Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+    }
+    else {
+        Write-Warning "Het HTML rapportbestand bestaat niet: $HtmlPath"
+        Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+    }
+}
+catch {
+    Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
+    Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+}
+
+Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in de exports directory." -ForegroundColor Green
