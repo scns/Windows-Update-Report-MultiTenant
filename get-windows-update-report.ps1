@@ -30,7 +30,51 @@ Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 $configJson = Get-Content -Path ".\config.json" -Raw
 $config = $configJson | ConvertFrom-Json
 
+# Functie voor het controleren en installeren van PowerShell modules
+function Install-RequiredModules {
+    param(
+        [string[]]$ModuleNames
+    )
+    
+    Write-Host "Controleren van benodigde PowerShell modules..."
+    
+    foreach ($ModuleName in $ModuleNames) {
+        $Module = Get-Module -ListAvailable -Name $ModuleName
+        
+        if (-not $Module) {
+            Write-Host "Module '$ModuleName' niet gevonden. Bezig met installeren..." -ForegroundColor Yellow
+            try {
+                Install-Module -Name $ModuleName -Scope CurrentUser -Force -AllowClobber
+                Write-Host "Module '$ModuleName' succesvol geïnstalleerd." -ForegroundColor Green
+            }
+            catch {
+                Write-Error "Fout bij installeren van module '$ModuleName': $($_.Exception.Message)"
+                throw
+            }
+        }
+        else {
+            Write-Host "Module '$ModuleName' is al aanwezig." -ForegroundColor Green
+        }
+        
+        # Importeer de module
+        try {
+            Import-Module -Name $ModuleName -Force
+            Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Fout bij importeren van module '$ModuleName': $($_.Exception.Message)"
+            throw
+        }
+    }
+}
 
+# Lijst van benodigde modules
+$RequiredModules = @(
+    "Microsoft.Graph"
+)
+
+# Installeer en importeer benodigde modules
+Install-RequiredModules -ModuleNames $RequiredModules
 
 # Controleer of de exports directory bestaat, zo niet: maak hem aan
 $ExportDir = ".\$($config.exportDirectory)"
