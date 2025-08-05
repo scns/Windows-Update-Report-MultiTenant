@@ -8,7 +8,7 @@ Dit bestand legt uit wat elke instelling in `config.json` doet:
 
 - **Type**: Number
 - **Standaard**: 40
-- **Beschrijving**: Het aantal export bestanden dat behouden blijft per klant en per type (Overview/ByUpdate). Bijvoorbeeld: als deze waarde op 10 staat, worden de laatste 10 "Overview" bestanden van elke klant behouden, en de laatste 10 "ByUpdate" bestanden van elke klant. Oudere bestanden worden automatisch naar de archief directory verplaatst.
+- **Beschrijving**: Het aantal export bestanden dat behouden blijft per klant en per type (Overview/ByUpdate). Bijvoorbeeld: als deze waarde op 40 staat, worden de laatste 40 "Overview" bestanden van elke klant behouden, en de laatste 40 "ByUpdate" bestanden van elke klant. Oudere bestanden worden automatisch naar de archief directory verplaatst.
 
 ### `cleanupOldExports`
 
