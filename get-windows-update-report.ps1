@@ -414,8 +414,14 @@ Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
 Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
 Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
 try {
-    Start-Process $HtmlPath
-    Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+    if (Test-Path $HtmlPath -PathType Leaf -and ($HtmlPath.ToLower().EndsWith(".html"))) {
+        Start-Process $HtmlPath
+        Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+    }
+    else {
+        Write-Warning "Het HTML rapportbestand bestaat niet of heeft niet de juiste extensie (.html): $HtmlPath"
+        Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+    }
 }
 catch {
     Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
