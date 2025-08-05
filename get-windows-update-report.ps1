@@ -20,10 +20,10 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
-2025-07-28
+2025-08-05
 
 .VERSIE
-1.0.1
+2.0
 #>
 
 # Import configuratie
@@ -62,15 +62,8 @@ function Install-RequiredModules {
         Write-Host "Importeren van module '$ModuleName'..." -ForegroundColor White
         try {
             # Probeer eerst alleen de benodigde commands te importeren
-            if ($ModuleName -eq "Microsoft.Graph") {
-                Import-Module Microsoft.Graph.Authentication -Force -ErrorAction Stop
-                Write-Host "Microsoft.Graph.Authentication geïmporteerd." -ForegroundColor Green
-                Import-Module Microsoft.Graph.Security -Force -ErrorAction Stop  
-                Write-Host "Microsoft.Graph.Security geïmporteerd." -ForegroundColor Green
-            } else {
-                Import-Module -Name $ModuleName -Force -ErrorAction Stop
-                Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
-            }
+            Import-Module -Name $ModuleName -Force -ErrorAction Stop
+            Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
         }
         catch {
             Write-Error "Fout bij importeren van module '$ModuleName': $($_.Exception.Message)"
@@ -83,7 +76,8 @@ function Install-RequiredModules {
 
 # Lijst van benodigde modules
 $RequiredModules = @(
-    "Microsoft.Graph"
+    "Microsoft.Graph.Authentication",
+    "Microsoft.Graph.Security"
 )
 
 # Installeer en importeer benodigde modules
@@ -400,3 +394,17 @@ $Html = @"
 
 $HtmlPath = ".\$($config.exportDirectory)\Windows_Update_Overview.html"
 Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
+
+# Open het HTML bestand automatisch in de standaard webbrowser
+Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
+Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
+try {
+    Start-Process $HtmlPath
+    Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+}
+catch {
+    Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
+    Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+}
+
+Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in de exports directory." -ForegroundColor Green
