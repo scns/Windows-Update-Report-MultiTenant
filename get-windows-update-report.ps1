@@ -26,9 +26,49 @@ Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 1.0.1
 #>
 
+# Import configuratie
+$configJson = Get-Content -Path ".\config.json" -Raw
+$config = $configJson | ConvertFrom-Json
+
+
+
 # Controleer of de exports directory bestaat, zo niet: maak hem aan
-if (-not (Test-Path -Path ".\exports" -PathType Container)) {
-    New-Item -Path ".\exports" -ItemType Directory | Out-Null
+$ExportDir = ".\$($config.exportDirectory)"
+if (-not (Test-Path -Path $ExportDir -PathType Container)) {
+    New-Item -Path $ExportDir -ItemType Directory | Out-Null
+}
+
+# Functie voor het opschonen van oude export bestanden
+function Remove-OldExports {
+    param(
+        [string]$ExportPath,
+        [int]$RetentionCount
+    )
+    
+    if ($config.cleanupOldExports -eq $true -and $RetentionCount -gt 0) {
+        Write-Host "Bezig met opschonen van oude export bestanden... (behouden: $RetentionCount per type)"
+        
+        # Groepeer bestanden per type (Overview of ByUpdate) en per klant
+        $AllFiles = Get-ChildItem -Path $ExportPath -Filter "*.csv" | Sort-Object Name -Descending
+        
+        # Groepeer per klant en type
+        $GroupedFiles = $AllFiles | Group-Object { 
+            $parts = $_.Name -split "_"
+            if ($parts.Count -ge 3) {
+                return "$($parts[1])_$($parts[-1])" # CustomerName_Type.csv
+            }
+            return "Unknown"
+        }
+        
+        foreach ($group in $GroupedFiles) {
+            $FilesToDelete = $group.Group | Select-Object -Skip $RetentionCount
+            
+            foreach ($file in $FilesToDelete) {
+                Write-Host "Verwijderen: $($file.Name)"
+                Remove-Item -Path $file.FullName -Force
+            }
+        }
+    }
 }
 
 #Import JSON
@@ -86,7 +126,7 @@ foreach ($cred in $data.LoginCredentials) {
 
     #Export the results
     $DateStamp = Get-Date -Format "yyyyMMdd"
-    $ExportPath = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
+    $ExportPath = ".\$($config.exportDirectory)\$DateStamp`_$($cred.customername)_Windows_Update_report_Overview.csv"
     $ResultsTable | Export-Csv -NoTypeInformation -path $ExportPath
 
     # Create a table: Missing Update -> Devices
@@ -103,15 +143,18 @@ foreach ($cred in $data.LoginCredentials) {
     }
 
     # Export Missing Update -> Devices table
-    $ExportPathUpdates = ".\exports\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
+    $ExportPathUpdates = ".\$($config.exportDirectory)\$DateStamp`_$($cred.customername)_Windows_Update_report_ByUpdate.csv"
     $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
 
     #Disconnect from MG Graph
     Disconnect-MgGraph
 }
 
+# Voer cleanup uit na alle exports
+Remove-OldExports -ExportPath $ExportDir -RetentionCount $config.exportRetentionCount
+
 # Verzamel alle Overview-bestanden
-$OverviewFiles = Get-ChildItem -Path ".\exports" -Filter "*_Overview.csv" | Sort-Object Name
+$OverviewFiles = Get-ChildItem -Path ".\$($config.exportDirectory)" -Filter "*_Overview.csv" | Sort-Object Name
 
 # Haal de totalen per dag per klant op
 $CountsPerDayPerCustomer = @{}
@@ -287,5 +330,5 @@ $Html = @"
 </html>
 "@
 
-$HtmlPath = ".\exports\Windows_Update_Overview.html"
+$HtmlPath = ".\$($config.exportDirectory)\Windows_Update_Overview.html"
 Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8

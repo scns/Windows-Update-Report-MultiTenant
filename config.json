@@ -1,0 +1,6 @@
+{
+    "exportRetentionDays": 14,
+    "exportRetentionCount": 14,
+    "cleanupOldExports": true,
+    "exportDirectory": "exports"
+}
