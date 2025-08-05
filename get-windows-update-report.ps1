@@ -414,11 +414,8 @@ Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
 Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
 Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
 try {
-<<<<<<< HEAD
-    if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html"))) {
-=======
-    if (Test-Path $HtmlPath -PathType Leaf) {
->>>>>>> 5fe0ac2f4fb65e7c084589204a55652e222208a2
+    if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html")))
+    {
         Start-Process $HtmlPath
         Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
     }
