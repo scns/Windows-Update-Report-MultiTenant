@@ -120,9 +120,15 @@ function Move-OldExportsToArchive {
         
         # Groepeer per klant en type
         $GroupedFiles = $AllFiles | Group-Object { 
+            # Verwacht patroon: Prefix_Customer_Type.csv
             $parts = $_.Name -split "_"
+            # Controleer of het bestand voldoet aan het verwachte patroon
             if ($parts.Count -ge 3) {
-                return "$($parts[1])_$($parts[-1])" # CustomerName_Type.csv
+                # Controleer of het laatste deel eindigt op .csv
+                $typePart = $parts[-1]
+                if ($typePart -match "^[A-Za-z]+\.csv$") {
+                    return "$($parts[1])_$($typePart)" # CustomerName_Type.csv
+                }
             }
             return "Unknown"
         }
