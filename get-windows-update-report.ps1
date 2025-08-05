@@ -95,15 +95,22 @@ if (-not (Test-Path -Path $ExportDir -PathType Container)) {
     New-Item -Path $ExportDir -ItemType Directory | Out-Null
 }
 
-# Functie voor het opschonen van oude export bestanden
-function Remove-OldExports {
+# Controleer of de archive directory bestaat, zo niet: maak hem aan
+$ArchiveDir = ".\$($config.archiveDirectory)"
+if (-not (Test-Path -Path $ArchiveDir -PathType Container)) {
+    New-Item -Path $ArchiveDir -ItemType Directory | Out-Null
+}
+
+# Functie voor het verplaatsen van oude export bestanden naar archief
+function Move-OldExportsToArchive {
     param(
         [string]$ExportPath,
+        [string]$ArchivePath,
         [int]$RetentionCount
     )
     
     if ($config.cleanupOldExports -eq $true -and $RetentionCount -gt 0) {
-        Write-Host "Bezig met opschonen van oude export bestanden... (behouden: $RetentionCount per type)"
+        Write-Host "Bezig met archiveren van oude export bestanden... (behouden: $RetentionCount per type)" -ForegroundColor Cyan
         
         # Groepeer bestanden per type (Overview of ByUpdate) en per klant
         $AllFiles = Get-ChildItem -Path $ExportPath -Filter "*.csv" | Sort-Object Name -Descending
@@ -118,11 +125,15 @@ function Remove-OldExports {
         }
         
         foreach ($group in $GroupedFiles) {
-            $FilesToDelete = $group.Group | Select-Object -Skip $RetentionCount
+            $FilesToArchive = $group.Group | Select-Object -Skip $RetentionCount
             
-            foreach ($file in $FilesToDelete) {
-                Write-Host "Verwijderen: $($file.Name)"
-                Remove-Item -Path $file.FullName -Force
+            if ($FilesToArchive.Count -gt 0) {
+                foreach ($file in $FilesToArchive) {
+                    $DestinationPath = Join-Path -Path $ArchivePath -ChildPath $file.Name
+                    Write-Host "Archiveren: $($file.Name) -> $ArchivePath" -ForegroundColor Yellow
+                    Move-Item -Path $file.FullName -Destination $DestinationPath -Force
+                }
+                Write-Host "Groep '$($group.Name)': $($FilesToArchive.Count) bestanden gearchiveerd." -ForegroundColor Green
             }
         }
     }
@@ -207,8 +218,8 @@ foreach ($cred in $data.LoginCredentials) {
     Disconnect-MgGraph
 }
 
-# Voer cleanup uit na alle exports
-Remove-OldExports -ExportPath $ExportDir -RetentionCount $config.exportRetentionCount
+# Voer archivering uit na alle exports
+Move-OldExportsToArchive -ExportPath $ExportDir -ArchivePath $ArchiveDir -RetentionCount $config.exportRetentionCount
 
 # Verzamel alle Overview-bestanden
 $OverviewFiles = Get-ChildItem -Path ".\$($config.exportDirectory)" -Filter "*_Overview.csv" | Sort-Object Name
