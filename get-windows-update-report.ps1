@@ -36,9 +36,11 @@ function Install-RequiredModules {
         [string[]]$ModuleNames
     )
     
-    Write-Host "Controleren van benodigde PowerShell modules..."
+    Write-Host "Controleren van benodigde PowerShell modules..." -ForegroundColor Cyan
     
     foreach ($ModuleName in $ModuleNames) {
+        Write-Host "Verwerken van module: $ModuleName" -ForegroundColor White
+        
         $Module = Get-Module -ListAvailable -Name $ModuleName
         
         if (-not $Module) {
@@ -56,16 +58,27 @@ function Install-RequiredModules {
             Write-Host "Module '$ModuleName' is al aanwezig." -ForegroundColor Green
         }
         
-        # Importeer de module
+        # Importeer de module met expliciete feedback
+        Write-Host "Importeren van module '$ModuleName'..." -ForegroundColor White
         try {
-            Import-Module -Name $ModuleName -Force
-            Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
+            # Probeer eerst alleen de benodigde commands te importeren
+            if ($ModuleName -eq "Microsoft.Graph") {
+                Import-Module Microsoft.Graph.Authentication -Force -ErrorAction Stop
+                Write-Host "Microsoft.Graph.Authentication geïmporteerd." -ForegroundColor Green
+                Import-Module Microsoft.Graph.Security -Force -ErrorAction Stop  
+                Write-Host "Microsoft.Graph.Security geïmporteerd." -ForegroundColor Green
+            } else {
+                Import-Module -Name $ModuleName -Force -ErrorAction Stop
+                Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
+            }
         }
         catch {
             Write-Error "Fout bij importeren van module '$ModuleName': $($_.Exception.Message)"
             throw
         }
     }
+    
+    Write-Host "Module controle voltooid." -ForegroundColor Green
 }
 
 # Lijst van benodigde modules
