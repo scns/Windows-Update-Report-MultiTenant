@@ -13,8 +13,10 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 
 .GEBRUIK
 1. Vul het credentials.json bestand met de juiste tenantgegevens.
-2. Voer het script uit: .\get-windows-update-report.ps1
-3. Bekijk de resultaten in de map 'exports'.
+2. config.json bevat de export instellingen zoals de export directory, archief directory en het aantal te behouden exports.
+3. Voer het script uit: .\get-windows-update-report.ps1
+4. Bekijk de resultaten in de map 'exports'.
+
 
 .AUTEUR
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
