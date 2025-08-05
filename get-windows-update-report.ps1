@@ -29,8 +29,15 @@ Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 #>
 
 # Import configuratie
-$configJson = Get-Content -Path ".\config.json" -Raw
-$config = $configJson | ConvertFrom-Json
+try {
+    $configJson = Get-Content -Path ".\config.json" -Raw
+    $config = $configJson | ConvertFrom-Json
+}
+catch {
+    Write-Error "Fout bij het laden of parsen van 'config.json': $($_.Exception.Message)"
+    Write-Host "Controleer of 'config.json' aanwezig is, leesbaar is, en geldige JSON bevat." -ForegroundColor Red
+    exit 1
+}
 
 # Functie voor het controleren en installeren van PowerShell modules
 function Install-RequiredModules {
