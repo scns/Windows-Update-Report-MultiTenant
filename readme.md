@@ -12,15 +12,18 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 
 ## Functionaliteit
 
-- Haalt per tenant de ontbrekende Windows-updates op via Microsoft Graph Threat Hunting API.
-- Exporteert resultaten naar CSV-bestanden per klant.
-- Genereert een HTML-dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js).
-- Ondersteunt meerdere tenants via een `credentials.json`-bestand.
+- **Automatische module installatie**: Controleert en installeert automatisch benodigde PowerShell modules
+- **Configureerbare instellingen**: Alle instellingen beheerbaar via `config.json`
+- **Multi-tenant ondersteuning**: Haalt per tenant de ontbrekende Windows-updates op via Microsoft Graph Threat Hunting API
+- **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant
+- **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
+- **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
+- **Automatische browser integratie**: Opent het gegenereerde rapport automatisch in de standaard webbrowser
 
 ## Benodigdheden
 
 - PowerShell 5+
-- Microsoft Graph PowerShell SDK (`Install-Module Microsoft.Graph`)
+- Microsoft Graph PowerShell SDK (wordt automatisch geïnstalleerd)
 - Een Azure AD App Registration per tenant met de juiste permissies
 
 ## Voorbereiding
@@ -37,7 +40,9 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 6. Klik op **Grant admin consent** voor deze permissies.
 7. Ga naar **Certificates & secrets** en maak een nieuwe client secret aan. Noteer deze waarde direct.
 
-### 2. Vul het `credentials.json`-bestand
+### 2. Configureer het project
+
+#### Credentials bestand
 
 Maak een bestand `credentials.json` aan in de root van dit project met het volgende format:
 
@@ -55,24 +60,77 @@ Maak een bestand `credentials.json` aan in de root van dit project met het volge
 }
 ```
 
+#### Configuratie bestand
+
+Het script gebruikt een `config.json` bestand voor alle instellingen:
+
+```json
+{
+    "exportRetentionCount": 10,
+    "cleanupOldExports": true,
+    "exportDirectory": "exports",
+    "archiveDirectory": "archive"
+}
+```
+
+**Configuratie opties:**
+
+- `exportRetentionCount`: Aantal export bestanden dat behouden blijft per klant/type (oudere worden gearchiveerd)
+- `cleanupOldExports`: Schakel automatische archivering in/uit (true/false)
+- `exportDirectory`: Directory waar nieuwe export bestanden worden opgeslagen
+- `archiveDirectory`: Directory waar oude export bestanden worden gearchiveerd
+
 ### 3. Installeer benodigde PowerShell-modules
 
-Open PowerShell als administrator en voer uit:
-
-```powershell
-Install-Module Microsoft.Graph -Scope CurrentUser
-```
+De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik van het script. Handmatige installatie is niet meer nodig.
 
 ## Gebruik
 
-1. Plaats je `credentials.json` in de projectmap.
-2. Start het script:
+1. Plaats je `credentials.json` en `config.json` in de projectmap.
+1. Start het script:
 
 ```powershell
 .\get-windows-update-report.ps1
 ```
 
-3. De resultaten vind je in de map `exports`, inclusief een HTML-dashboard (`Windows_Update_Overview.html`).
+1. Het script zal:
+   - Automatisch benodigde modules installeren (indien nodig)
+   - Data ophalen van alle geconfigureerde tenants
+   - CSV-bestanden genereren per klant
+   - Oude bestanden archiveren (indien geconfigureerd)
+   - Een HTML-dashboard genereren
+   - Het rapport automatisch openen in je standaard webbrowser
+
+1. De resultaten vind je in de geconfigureerde export directory, inclusief het HTML-dashboard.
+
+## Bestandsstructuur
+
+Na uitvoering krijg je de volgende structuur:
+
+```text
+Windows-Update-Report-MultiTenant/
+├── credentials.json
+├── config.json
+├── get-windows-update-report.ps1
+├── exports/
+│   ├── 20250805_KlantA_Windows_Update_report_Overview.csv
+│   ├── 20250805_KlantA_Windows_Update_report_ByUpdate.csv
+│   ├── 20250805_KlantB_Windows_Update_report_Overview.csv
+│   ├── 20250805_KlantB_Windows_Update_report_ByUpdate.csv
+│   └── Windows_Update_Overview.html
+└── archive/
+    ├── 20250804_KlantA_Windows_Update_report_Overview.csv
+    └── ... (oudere bestanden)
+```
+
+## Nieuwe functies in v2.0
+
+- **Automatische module installatie**: Geen handmatige module installatie meer nodig
+- **Configureerbare archivering**: Oude bestanden worden verplaatst naar archief in plaats van verwijderd
+- **Flexibele directory instellingen**: Configureerbare export en archief directories
+- **Automatische browser integratie**: HTML rapport wordt automatisch geopend
+- **Verbeterde feedback**: Kleurgecodeerde status berichten tijdens uitvoering
+- **Intelligente bestandsbeheer**: Configureerbaar aantal bestanden dat behouden blijft
 
 ## Opmerkingen
 
