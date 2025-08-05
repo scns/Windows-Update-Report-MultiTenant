@@ -1,5 +1,5 @@
 {
-    "exportRetentionCount": 10,
+    "exportRetentionCount": 40,
     "cleanupOldExports": true,
     "exportDirectory": "exports",
     "archiveDirectory": "archive"

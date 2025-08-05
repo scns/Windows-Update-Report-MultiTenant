@@ -80,6 +80,8 @@ Het script gebruikt een `config.json` bestand voor alle instellingen:
 - `exportDirectory`: Directory waar nieuwe export bestanden worden opgeslagen
 - `archiveDirectory`: Directory waar oude export bestanden worden gearchiveerd
 
+> 📖 **Gedetailleerde configuratie uitleg**: Voor uitgebreide informatie over elke configuratie optie, zie [CONFIG-UITLEG.md](CONFIG-UITLEG.md)
+
 ### 3. Installeer benodigde PowerShell-modules
 
 De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik van het script. Handmatige installatie is niet meer nodig.
