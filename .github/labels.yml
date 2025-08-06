@@ -1,5 +1,5 @@
 ---
-# GitHub Labels Configuration
+# GitHub Labels Configuration for Windows Update Report
 - name: "breaking-change"
   color: ee0701
   description: "A breaking change for existing users."
