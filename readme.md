@@ -44,7 +44,17 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 
 #### Credentials bestand
 
-Maak een bestand `credentials.json` aan in de root van dit project met het volgende format:
+**Voor nieuwe installaties:**
+
+1. Hernoem `_credentials.json` naar `credentials.json`
+2. Vul de juiste waarden in voor je tenants
+
+**Voor bestaande installaties:**
+
+- Je bestaande `credentials.json` blijft werken zoals het is
+- Geen wijzigingen nodig
+
+Het `credentials.json` bestand heeft het volgende format:
 
 ```json
 {
@@ -62,11 +72,21 @@ Maak een bestand `credentials.json` aan in de root van dit project met het volge
 
 #### Configuratie bestand
 
-Het script gebruikt een `config.json` bestand voor alle instellingen:
+**Voor nieuwe installaties:**
+
+1. Hernoem `_config.json` naar `config.json`
+2. Pas de instellingen aan naar jouw behoeften
+
+**Voor bestaande installaties:**
+
+- Als je al een `config.json` hebt, voeg eventueel ontbrekende opties toe
+- Vergelijk met `_config.json` om te zien welke nieuwe opties beschikbaar zijn
+
+Het `config.json` bestand bevat alle instellingen:
 
 ```json
 {
-    "exportRetentionCount": 10,
+    "exportRetentionCount": 40,
     "cleanupOldExports": true,
     "exportDirectory": "exports",
     "archiveDirectory": "archive"
@@ -88,7 +108,10 @@ De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik va
 
 ## Gebruik
 
-1. Plaats je `credentials.json` en `config.json` in de projectmap.
+1. **Voor nieuwe installaties**: Hernoem `_credentials.json` naar `credentials.json` en `_config.json` naar `config.json`
+1. **Voor bestaande installaties**: Controleer of je `config.json` alle benodigde opties bevat (vergelijk met `_config.json`)
+1. Vul je tenant gegevens in het `credentials.json` bestand
+1. Pas de instellingen in `config.json` aan naar jouw behoeften
 1. Start het script:
 
 ```powershell
@@ -107,21 +130,35 @@ De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik va
 
 ## Bestandsstructuur
 
-Na uitvoering krijg je de volgende structuur:
+### Template bestanden (meegeleverd)
 
 ```text
 Windows-Update-Report-MultiTenant/
-├── credentials.json
-├── config.json
+├── _credentials.json     # Template voor credentials (hernoem naar credentials.json)
+├── _config.json         # Template voor configuratie (hernoem naar config.json)
+├── CONFIG-UITLEG.md     # Gedetailleerde configuratie uitleg
 ├── get-windows-update-report.ps1
-├── exports/
-│   ├── 20250805_KlantA_Windows_Update_report_Overview.csv
-│   ├── 20250805_KlantA_Windows_Update_report_ByUpdate.csv
-│   ├── 20250805_KlantB_Windows_Update_report_Overview.csv
-│   ├── 20250805_KlantB_Windows_Update_report_ByUpdate.csv
+└── readme.md
+```
+
+### Na configuratie en uitvoering
+
+```text
+Windows-Update-Report-MultiTenant/
+├── _credentials.json     # Template bestand (blijft bestaan)
+├── _config.json         # Template bestand (blijft bestaan)
+├── credentials.json     # Jouw tenant configuratie
+├── config.json          # Jouw instellingen
+├── CONFIG-UITLEG.md
+├── get-windows-update-report.ps1
+├── exports/             # Configureerbare export directory
+│   ├── 20250806_KlantA_Windows_Update_report_Overview.csv
+│   ├── 20250806_KlantA_Windows_Update_report_ByUpdate.csv
+│   ├── 20250806_KlantB_Windows_Update_report_Overview.csv
+│   ├── 20250806_KlantB_Windows_Update_report_ByUpdate.csv
 │   └── Windows_Update_Overview.html
-└── archive/
-    ├── 20250804_KlantA_Windows_Update_report_Overview.csv
+└── archive/             # Oude bestanden worden hier gearchiveerd
+    ├── 20250805_KlantA_Windows_Update_report_Overview.csv
     └── ... (oudere bestanden)
 ```
 
