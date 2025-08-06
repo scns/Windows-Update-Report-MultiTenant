@@ -60,17 +60,19 @@ version-resolver:
       - "refactor"
       - "security"
   default: patch
+
 no-changes-template: '- No changes'
+
 template: |
   ## What's Changed
 
   $CHANGES
 
-  **Full Changelog**: https://github.com/scns/Windows-Update-Report-MultiTenan/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
+  **Full Changelog**: https://github.com/scns/Windows-Update-Report-MultiTenant/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
 
-   _To receive a notification on new releases, click on **Watch** > **Custom** > **Releases** on the top._
+  _To receive a notification on new releases, click on **Watch** > **Custom** > **Releases** on the top._
 
-   _Be sure to 🌟 this repository for updates! Its a hobby project . Flash it go to the link https://scns.github.io/Windows-Update-Report-MultiTenan/._
+  _Be sure to 🌟 this repository for updates! It's a hobby project. Check it out at the link https://scns.github.io/Windows-Update-Report-MultiTenant/._
 
   ## Contributors
 
