@@ -1,5 +1,7 @@
-name: Sync Labels
-"on":
+---
+name: Sync labels
+
+on:
   push:
     branches:
       - main
@@ -8,17 +10,13 @@ name: Sync Labels
   workflow_dispatch:
 
 jobs:
-  sync-labels:
-    name: Sync Labels
+  labels:
+    name: ♻️ Sync labels
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Sync labels
-        uses: micnncim/action-label-syncer@v1
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4.2.2
+      - name: 🚀 Run Label Syncer
+        uses: micnncim/action-label-syncer@v1.3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          manifest: .github/labels.yml
-          repository: ${{ github.repository }}
