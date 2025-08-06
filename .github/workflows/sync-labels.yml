@@ -17,8 +17,8 @@ jobs:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v4.2.2
       - name: 🚀 Run Label Syncer
-        uses: micnncim/action-label-syncer@v1.3.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: EndBug/label-sync@v2
         with:
-          manifest: .github/labels.yml
+          config-file: .github/labels.yml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          delete-other-labels: false
