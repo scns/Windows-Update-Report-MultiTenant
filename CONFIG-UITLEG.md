@@ -1,6 +1,19 @@
 # Configuratie Uitleg - config.json
 
-Dit bestand legt uit wat elke instelling in `config.json` doet:
+Dit bestand legt uit wat elke instelling in `config.json` doet.
+
+## Setup
+
+**Voor nieuwe installaties:**
+
+- Hernoem `_config.json` naar `config.json`
+- Pas de waarden aan naar jouw behoeften
+
+**Voor bestaande installaties:**
+
+- Controleer of je bestaande `config.json` alle onderstaande opties bevat
+- Voeg ontbrekende opties toe indien nodig
+- Vergelijk met `_config.json` voor de nieuwste template
 
 ## Configuratie Parameters
 
