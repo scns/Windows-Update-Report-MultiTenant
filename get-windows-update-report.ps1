@@ -92,6 +92,10 @@ $RequiredModules = @(
 # Installeer en importeer benodigde modules
 Install-RequiredModules -ModuleNames $RequiredModules
 
+# Onderdruk Microsoft Graph statusberichten
+$env:POWERSHELL_TELEMETRY_OPTOUT = "1"
+$ProgressPreference = "SilentlyContinue"
+
 # Controleer of de exports directory bestaat, zo niet: maak hem aan
 $ExportDir = ".\$($config.exportDirectory)"
 if (-not (Test-Path -Path $ExportDir -PathType Container)) {
@@ -157,6 +161,8 @@ $data = $json | ConvertFrom-Json
 
 foreach ($cred in $data.LoginCredentials) {
 
+    Write-Host "Verwerken van klant: $($cred.customername)" -ForegroundColor Cyan
+
     $ClientID = "$($cred.ClientID)"
     $Secret = "$($cred.Secret)"
     $TenantID = "$($cred.TenantID)"
@@ -166,7 +172,7 @@ foreach ($cred in $data.LoginCredentials) {
     $ClientSecretCredential = New-Object System.Management.Automation.PSCredential -ArgumentList ($ClientID, $Secret)
 
     #Connect to Graph using Application Secret
-    Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential
+    Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential -NoWelcome | Out-Null
 
     #Create Query
     $Query = "DeviceTvmSoftwareVulnerabilities
@@ -224,7 +230,9 @@ foreach ($cred in $data.LoginCredentials) {
     $MissingUpdateTable | Export-Csv -NoTypeInformation -Path $ExportPathUpdates
 
     #Disconnect from MG Graph
-    Disconnect-MgGraph
+    Disconnect-MgGraph | Out-Null
+    
+    Write-Host "Klant $($cred.customername) voltooid. CSV-bestanden gegenereerd." -ForegroundColor Green
 }
 
 # Voer archivering uit na alle exports
