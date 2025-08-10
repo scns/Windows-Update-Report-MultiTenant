@@ -1,15 +1,36 @@
-# Contributing
 
-When contributing to this repository, please first discuss the change you wish to make via issue, email, or any other method with the owners of this repository before making a change.
+# Bijdragen aan Windows-Update-Report-MultiTenant
 
-Please note we have a code of conduct, please follow it in all your interactions with the project.
+Bedankt voor je interesse in bijdragen! Dit document legt uit hoe je kunt bijdragen en welke richtlijnen gelden.
 
-Issues and feature requests
-You've found a bug in the source code, a mistake in the documentation or maybe you'd like a new feature? You can help us by submitting an issue to our GitHub Repository. Before you create an issue, make sure you search the archive, maybe your question was already answered.
+## Hoe je kunt bijdragen
 
-Even better: You could submit a pull request with a fix / new feature!
+### Issues
 
-Pull request process
-Search our repository for open or closed pull requests that relates to your submission. You don't want to duplicate effort.
+- Beschrijf duidelijk wat het probleem of de feature request is
+- Voeg context, versie-informatie en indien mogelijk stappen om te reproduceren toe
 
-You may merge the pull request in once you have the sign-off of two other developers, or if you do not have permission to do that, you may request the second reviewer to merge it for you.
+### Pull Requests
+
+- Maak je wijzigingen in een aparte branch
+- Houd PR’s klein en gericht
+- Beschrijf in de PR de motivatie, wijzigingen en teststrategie
+- Voeg waar mogelijk automatische tests en documentatie toe
+
+## Code stijl
+
+- Volg de bestaande code-indeling en conventies
+- Gebruik duidelijke commitberichten ("wat" en "waarom")
+
+## Tests
+
+- Voer alle bestaande tests uit en zorg dat deze slagen
+- Voeg nieuwe tests toe voor nieuwe functionaliteit of bugfixes
+
+## Gedragscode
+
+Door bij te dragen ga je akkoord met de [Gedragscode](CODE_OF_CONDUCT.md) van dit project.
+
+## Licentie
+
+Door bijdragen te leveren, ga je ermee akkoord dat deze worden vrijgegeven onder de licentie van het project.
