@@ -291,10 +291,12 @@ $CustomerTabs = ""
 $CustomerTables = ""
 foreach ($Customer in $LatestCsvPerCustomer.Keys) {
     $TableRows = ""
+    $RowCount = 0
     foreach ($row in $LatestCsvPerCustomer[$Customer]) {
         $TableRows += "<tr><td>$($row.Device)</td><td>$($row.'Missing Updates')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+        $RowCount++
     }
-    $CustomerTabs += "<button class='tablinks' onclick=""openCustomer(event, '$Customer')"">$Customer</button>"
+    $CustomerTabs += '<button class="tablinks" onclick="openCustomer(event, ''' + $Customer + ''')">' + $Customer + ' (' + $RowCount + ')</button>'
     $CustomerTables += @"
     <div id="$Customer" class="tabcontent" style="display:none">
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
@@ -429,7 +431,7 @@ try {
     }
     else {
         Write-Warning "Het HTML rapportbestand bestaat niet: $HtmlPath"
-        Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+        Write-host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
     }
 }
 catch {
