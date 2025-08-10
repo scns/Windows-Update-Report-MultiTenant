@@ -1,21 +1,29 @@
-# Security Policy
 
-## Supported Versions
+# Beveiligingsbeleid
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Ondersteunde versies
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+We onderhouden actief de laatste hoofdversie van het project en voorzien deze van beveiligingsupdates. Oudere versies ontvangen alleen updates als dat expliciet is aangegeven.
 
-## Reporting a Vulnerability
+| Versie    | Ondersteund | Opmerkingen         |
+|-----------|:-----------:|---------------------|
+| latest    | ✅          | Actief onderhouden  |
+| < latest  | ❌          | Geen updates        |
 
-Use this section to tell people how to report a vulnerability.
+## Kwetsbaarheden melden
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Meld (vermoede) kwetsbaarheden niet publiek in issues of pull requests.
+
+Gebruik één van deze kanalen:
+
+- E‑mail: [info@maarten-schmeitz.nl](mailto:info@maarten-schmeitz.nl)
+- GitHub Security Advisories (privé)
+
+Vermeld bij voorkeur:
+
+- Beschrijving van de kwetsbaarheid en potentiële impact
+- Stappen om het probleem te reproduceren
+- Getroffen versies of configuraties
+- Eventuele mitigaties
+
+Wij streven naar bevestiging binnen 72 uur en coördineren een verantwoorde openbaarmaking.
