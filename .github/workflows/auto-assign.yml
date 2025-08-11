@@ -17,7 +17,16 @@ jobs:
       issues: write
       contents: read
     steps:
-      - name: 👤 Auto assign reviewer and assignee
-        uses: kentaro-m/auto-assign-action@v2.0.0
+      - name: 👤 Auto assign PR reviewer and assignee
+        if: github.event_name == 'pull_request'
+        uses: hkusu/review-assign-action@v1.3.0
         with:
-          configuration-path: '.github/auto-assign.yml'
+          assignees: scns
+          reviewers: scns
+          
+      - name: 👤 Auto assign Issue
+        if: github.event_name == 'issues'
+        uses: pozil/auto-assign-issue@v1.11.0
+        with:
+          assignees: scns
+          numOfAssignee: 1
