@@ -11,7 +11,6 @@ jobs:
   auto-assign:
     name: 🔄 Auto assign PR/Issue
     runs-on: ubuntu-latest
-    if: github.actor != 'scns'  # Voorkom auto-assign als scns zelf de PR/Issue opent
     permissions:
       pull-requests: write
       issues: write
