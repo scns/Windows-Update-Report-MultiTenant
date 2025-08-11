@@ -243,21 +243,33 @@ $OverviewFiles = Get-ChildItem -Path ".\$($config.exportDirectory)" -Filter "*_O
 
 # Haal de totalen per dag per klant op
 $CountsPerDayPerCustomer = @{}
+$ClientsPerDayPerCustomer = @{}
 $LatestDatePerCustomer = @{}
 $LatestCsvPerCustomer = @{}
 foreach ($file in $OverviewFiles) {
     $csv = Import-Csv $file.FullName
     $TotalCount = ($csv | Measure-Object -Property Count -Sum).Sum
+    $ClientCount = $csv.Count  # Aantal rijen = aantal clients
     $parts = $file.Name -split "_"
     $Date = $parts[0]
     $Customer = $parts[1]
+    
     if (-not $CountsPerDayPerCustomer.ContainsKey($Customer)) {
         $CountsPerDayPerCustomer[$Customer] = @()
     }
+    if (-not $ClientsPerDayPerCustomer.ContainsKey($Customer)) {
+        $ClientsPerDayPerCustomer[$Customer] = @()
+    }
+    
     $CountsPerDayPerCustomer[$Customer] += [PSCustomObject]@{
         Date = $Date
         TotalCount = $TotalCount
     }
+    $ClientsPerDayPerCustomer[$Customer] += [PSCustomObject]@{
+        Date = $Date
+        ClientCount = $ClientCount
+    }
+    
     # Bepaal de laatste datum per klant
     if (-not $LatestDatePerCustomer.ContainsKey($Customer) -or ($Date -gt $LatestDatePerCustomer[$Customer])) {
         $LatestDatePerCustomer[$Customer] = $Date
@@ -278,51 +290,87 @@ $AllDates = $AllDates | Sort-Object
 $ChartLabels = $AllDates | ForEach-Object { "'$_'" }
 $ChartLabelsString = $ChartLabels -join ","
 
-# Genereer Chart.js datasets per klant
+# Genereer Chart.js datasets per klant (2 lijnen per klant)
 $ChartDatasets = ""
 $ChartDataJSON = "{"
 foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
-    # Maak een hashtable voor snelle lookup van data per datum
-    $CustomerDataLookup = @{}
+    # Maak hashtables voor snelle lookup van data per datum
+    $CustomerCountLookup = @{}
     foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
-        $CustomerDataLookup[$DataPoint.Date] = $DataPoint.TotalCount
+        $CustomerCountLookup[$DataPoint.Date] = $DataPoint.TotalCount
     }
     
-    # Bouw data array met null-waarden voor ontbrekende datums
-    $DataArray = @()
+    $CustomerClientLookup = @{}
+    foreach ($DataPoint in $ClientsPerDayPerCustomer[$Customer]) {
+        $CustomerClientLookup[$DataPoint.Date] = $DataPoint.ClientCount
+    }
+    
+    # Bouw data arrays met null-waarden voor ontbrekende datums
+    $CountDataArray = @()
+    $ClientDataArray = @()
     foreach ($Date in $AllDates) {
-        if ($CustomerDataLookup.ContainsKey($Date)) {
-            $DataArray += $CustomerDataLookup[$Date]
+        if ($CustomerCountLookup.ContainsKey($Date)) {
+            $CountDataArray += $CustomerCountLookup[$Date]
         } else {
-            $DataArray += "null"
+            $CountDataArray += "null"
+        }
+        
+        if ($CustomerClientLookup.ContainsKey($Date)) {
+            $ClientDataArray += $CustomerClientLookup[$Date]
+        } else {
+            $ClientDataArray += "null"
         }
     }
-    $Data = $DataArray -join ","
+    $CountData = $CountDataArray -join ","
+    $ClientData = $ClientDataArray -join ","
     
-    $Color = "rgb($(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255))"
+    $BaseColor = "$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255)"
+    
+    # Dataset 1: Updates (volle lijn)
     $ChartDatasets += @"
         {
-            label: '$Customer',
-            data: [$Data],
-            borderColor: '$Color',
-            backgroundColor: '$Color',
+            label: '$Customer - Updates',
+            data: [$CountData],
+            borderColor: 'rgb($BaseColor)',
+            backgroundColor: 'rgb($BaseColor)',
             fill: false,
             tension: 0.2,
-            spanGaps: true
+            spanGaps: true,
+            borderWidth: 2
         },
 "@
-    # Voeg data toe voor individuele klant grafieken (alleen eigen datums)
+    
+    # Dataset 2: Clients (gestippelde lijn)
+    $ChartDatasets += @"
+        {
+            label: '$Customer - Clients',
+            data: [$ClientData],
+            borderColor: 'rgba($BaseColor, 0.6)',
+            backgroundColor: 'rgba($BaseColor, 0.6)',
+            fill: false,
+            tension: 0.2,
+            spanGaps: true,
+            borderWidth: 2,
+            borderDash: [5, 5]
+        },
+"@
+    
+    # Voeg data toe voor individuele klant grafieken
     $CustomerLabels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
-    $CustomerData = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
+    $CustomerCountData = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
+    $CustomerClientData = ($ClientsPerDayPerCustomer[$Customer] | ForEach-Object { $_.ClientCount }) -join ","
+    
     $ChartDataJSON += @"
     '$Customer': {
         labels: [$($CustomerLabels -join ",")],
-        data: [$CustomerData],
-        borderColor: '$Color',
-        backgroundColor: '$Color'
+        countData: [$CustomerCountData],
+        clientData: [$CustomerClientData],
+        borderColor: 'rgb($BaseColor)',
+        backgroundColor: 'rgb($BaseColor)'
     },
 "@
 }
+
 $ChartDataJSON = $ChartDataJSON.TrimEnd(',') + "}"
 
 # Genereer tabbladen en tabellen voor alleen de laatste datum per klant
@@ -480,12 +528,22 @@ $Html = @"
         if (customerChartData[customerName]) {
             chart.data.labels = customerChartData[customerName].labels;
             chart.data.datasets = [{
-                label: customerName,
-                data: customerChartData[customerName].data,
+                label: customerName + ' - Updates',
+                data: customerChartData[customerName].countData,
                 borderColor: customerChartData[customerName].borderColor,
                 backgroundColor: customerChartData[customerName].backgroundColor,
                 fill: false,
-                tension: 0.2
+                tension: 0.2,
+                borderWidth: 2
+            }, {
+                label: customerName + ' - Clients',
+                data: customerChartData[customerName].clientData,
+                borderColor: customerChartData[customerName].borderColor.replace('rgb(', 'rgba(').replace(')', ', 0.6)'),
+                backgroundColor: customerChartData[customerName].backgroundColor.replace('rgb(', 'rgba(').replace(')', ', 0.6)'),
+                fill: false,
+                tension: 0.2,
+                borderWidth: 2,
+                borderDash: [5, 5]
             }];
             chart.options.plugins.title.text = customerName;
             chart.update();
