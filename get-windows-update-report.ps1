@@ -420,6 +420,11 @@ $Html = @"
                     display: true,
                     text: 'Alle klanten'
                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
     });
