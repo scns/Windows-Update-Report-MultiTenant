@@ -265,14 +265,40 @@ foreach ($file in $OverviewFiles) {
     }
 }
 
+# Verzamel alle unieke datums en sorteer ze
+$AllDates = @()
+foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
+    foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
+        if ($AllDates -notcontains $DataPoint.Date) {
+            $AllDates += $DataPoint.Date
+        }
+    }
+}
+$AllDates = $AllDates | Sort-Object
+$ChartLabels = $AllDates | ForEach-Object { "'$_'" }
+$ChartLabelsString = $ChartLabels -join ","
+
 # Genereer Chart.js datasets per klant
 $ChartDatasets = ""
-$ChartLabels = @()
 $ChartDataJSON = "{"
 foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
-    $Data = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
-    $Labels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
-    if ($Labels.Count -gt $ChartLabels.Count) { $ChartLabels = $Labels }
+    # Maak een hashtable voor snelle lookup van data per datum
+    $CustomerDataLookup = @{}
+    foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
+        $CustomerDataLookup[$DataPoint.Date] = $DataPoint.TotalCount
+    }
+    
+    # Bouw data array met null-waarden voor ontbrekende datums
+    $DataArray = @()
+    foreach ($Date in $AllDates) {
+        if ($CustomerDataLookup.ContainsKey($Date)) {
+            $DataArray += $CustomerDataLookup[$Date]
+        } else {
+            $DataArray += "null"
+        }
+    }
+    $Data = $DataArray -join ","
+    
     $Color = "rgb($(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255))"
     $ChartDatasets += @"
         {
@@ -281,21 +307,23 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
             borderColor: '$Color',
             backgroundColor: '$Color',
             fill: false,
-            tension: 0.2
+            tension: 0.2,
+            spanGaps: true
         },
 "@
-    # Voeg data toe voor individuele klant grafieken
+    # Voeg data toe voor individuele klant grafieken (alleen eigen datums)
+    $CustomerLabels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
+    $CustomerData = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
     $ChartDataJSON += @"
     '$Customer': {
-        labels: [$($Labels -join ",")],
-        data: [$Data],
+        labels: [$($CustomerLabels -join ",")],
+        data: [$CustomerData],
         borderColor: '$Color',
         backgroundColor: '$Color'
     },
 "@
 }
 $ChartDataJSON = $ChartDataJSON.TrimEnd(',') + "}"
-$ChartLabelsString = $ChartLabels -join ","
 
 # Genereer tabbladen en tabellen voor alleen de laatste datum per klant
 $CustomerTabs = ""
