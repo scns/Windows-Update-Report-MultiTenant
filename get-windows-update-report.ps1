@@ -268,6 +268,7 @@ foreach ($file in $OverviewFiles) {
 # Genereer Chart.js datasets per klant
 $ChartDatasets = ""
 $ChartLabels = @()
+$ChartDataJSON = "{"
 foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
     $Data = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
     $Labels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
@@ -283,7 +284,17 @@ foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
             tension: 0.2
         },
 "@
+    # Voeg data toe voor individuele klant grafieken
+    $ChartDataJSON += @"
+    '$Customer': {
+        labels: [$($Labels -join ",")],
+        data: [$Data],
+        borderColor: '$Color',
+        backgroundColor: '$Color'
+    },
+"@
 }
+$ChartDataJSON = $ChartDataJSON.TrimEnd(',') + "}"
 $ChartLabelsString = $ChartLabels -join ","
 
 # Genereer tabbladen en tabellen voor alleen de laatste datum per klant
@@ -320,26 +331,30 @@ foreach ($Customer in $LatestCsvPerCustomer.Keys) {
 
 $DataTablesScript = @'
 $(document).ready(function() {
-    $("table.display").each(function(){
-        var table = $(this).DataTable({
-            "order": [[2, "desc"]],
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
-            }
-        });
-        // Kolomfilters toevoegen
-        $(this).find('thead th').each(function (i) {
-            var title = $(this).text();
-            $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
-            $(this).find("input").on('keyup change', function () {
-                if (table.column(i).search() !== this.value) {
-                    table.column(i).search(this.value).draw();
+    // Initialiseer DataTables pas als een tab wordt geopend
+    function initializeDataTable(tableId) {
+        if (!$.fn.DataTable.isDataTable('#' + tableId)) {
+            var table = $('#' + tableId).DataTable({
+                "order": [[2, "desc"]],
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
                 }
             });
-        });
-    });
-    // Open eerste tab standaard
-    $(".tablinks").first().click();
+            // Kolomfilters toevoegen
+            $('#' + tableId + ' thead th').each(function (i) {
+                var title = $(this).text();
+                $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
+                $(this).find("input").on('keyup change', function () {
+                    if (table.column(i).search() !== this.value) {
+                        table.column(i).search(this.value).draw();
+                    }
+                });
+            });
+        }
+    }
+    
+    // Maak initializeDataTable globaal beschikbaar
+    window.initializeDataTable = initializeDataTable;
 });
 '@
 
@@ -377,14 +392,19 @@ $Html = @"
     <h2>Totale Count per dag per klant</h2>
     <canvas id="countChart" height="100"></canvas>
     <div class="tab">
+        <button class="tablinks" onclick="showAllCustomers()">Alle klanten</button>
         $CustomerTabs
     </div>
     $CustomerTables
 </div>
 <script>
-    // Chart.js
+    // Chart.js data per klant
+    const customerChartData = $ChartDataJSON;
+    let chart;
+    
+    // Initialiseer de grafiek
     const ctx = document.getElementById('countChart').getContext('2d');
-    new Chart(ctx, {
+    chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [$ChartLabelsString],
@@ -394,11 +414,17 @@ $Html = @"
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: true } }
+            plugins: { 
+                legend: { display: true },
+                title: {
+                    display: true,
+                    text: 'Alle klanten'
+                }
+            }
         }
     });
 
-    // Tabs
+    // Tabs functie - nu met grafiek filtering
     function openCustomer(evt, customerName) {
         var i, tabcontent, tablinks;
         tabcontent = document.getElementsByClassName("tabcontent");
@@ -411,6 +437,49 @@ $Html = @"
         }
         document.getElementById(customerName).style.display = "block";
         evt.currentTarget.className += " active";
+        
+        // Initialiseer DataTable voor deze klant
+        if (typeof initializeDataTable === 'function') {
+            initializeDataTable('overviewTable_' + customerName);
+        }
+        
+        // Update grafiek voor specifieke klant
+        if (customerChartData[customerName]) {
+            chart.data.labels = customerChartData[customerName].labels;
+            chart.data.datasets = [{
+                label: customerName,
+                data: customerChartData[customerName].data,
+                borderColor: customerChartData[customerName].borderColor,
+                backgroundColor: customerChartData[customerName].backgroundColor,
+                fill: false,
+                tension: 0.2
+            }];
+            chart.options.plugins.title.text = customerName;
+            chart.update();
+        }
+    }
+    
+    // Functie om alle klanten te tonen
+    function showAllCustomers() {
+        // Verberg alle tabcontent
+        var tabcontent = document.getElementsByClassName("tabcontent");
+        for (var i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        
+        // Verwijder active class van alle tabs
+        var tablinks = document.getElementsByClassName("tablinks");
+        for (var i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        
+        // Reset grafiek naar alle klanten
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [
+            $ChartDatasets
+        ];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
     }
 </script>
 </body>
