@@ -1,7 +1,35 @@
-name-template: 'Release v$NEXT_PATCH_VERSION'
-tag-template: "$RESOLVED_VERSION"
+name-template: 'Release v$RESOLVED_VERSION'
+tag-template: "v$RESOLVED_VERSION"
 change-template: "- #$NUMBER $TITLE @$AUTHOR"
 sort-direction: ascending
+
+autolabeler:
+  - label: 'documentation'
+    files:
+      - '*.md'
+      - 'docs/**/*'
+  - label: 'dependencies'
+    files:
+      - '.github/dependabot.yml'
+      - '.github/workflows/*'
+  - label: 'ci'
+    files:
+      - '.github/workflows/*'
+      - '.github/release-drafter.yml'
+  - label: 'enhancement'
+    title:
+      - '/enhance/i'
+      - '/improve/i'
+      - '/add/i'
+  - label: 'bugfix'
+    title:
+      - '/fix/i'
+      - '/bug/i'
+      - '/resolve/i'
+  - label: 'new-feature'
+    title:
+      - '/feature/i'
+      - '/new/i'
 
 categories:
   - title: "🚨 Major Release 🚨"
@@ -38,16 +66,20 @@ categories:
 
 exclude-labels:
   - "sync"
+  - "skip-changelog"
 
 version-resolver:
   major:
     labels:
       - "major-change"
       - "breaking-change"
+      - "type: major"
   minor:
     labels:
       - "minor"
       - "new-feature"
+      - "type: minor"
+      - "enhancement"
   patch:
     labels:
       - "bugfix"
@@ -55,10 +87,11 @@ version-resolver:
       - "ci"
       - "dependencies"
       - "documentation"
-      - "enhancement"
       - "performance"
       - "refactor"
       - "security"
+      - "type: patch"
+      - "maintenance"
   default: patch
 
 no-changes-template: '- No changes'
