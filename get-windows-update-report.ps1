@@ -269,7 +269,7 @@ foreach ($file in $OverviewFiles) {
 $ChartDatasets = ""
 $ChartLabels = @()
 $ChartDataJSON = "{"
-foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
+foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
     $Data = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
     $Labels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
     if ($Labels.Count -gt $ChartLabels.Count) { $ChartLabels = $Labels }
@@ -300,7 +300,7 @@ $ChartLabelsString = $ChartLabels -join ","
 # Genereer tabbladen en tabellen voor alleen de laatste datum per klant
 $CustomerTabs = ""
 $CustomerTables = ""
-foreach ($Customer in $LatestCsvPerCustomer.Keys) {
+foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
     $TableRows = ""
     $RowCount = 0
     foreach ($row in $LatestCsvPerCustomer[$Customer]) {
