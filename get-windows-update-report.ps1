@@ -459,6 +459,9 @@ $Html = @"
         .tab button:hover { background-color: #ddd; }
         .tab button.active { background-color: #ccc; }
         .tabcontent { display: none; padding: 20px 0; }
+        .footer { margin-top: 40px; padding: 20px 0; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px; }
+        .footer a { color: #0066cc; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -472,6 +475,10 @@ $Html = @"
         $CustomerTabs
     </div>
     $CustomerTables
+    
+    <div class="footer">
+        Powered by <a href="https://github.com/scns/Windows-Update-Report-MultiTenant" target="_blank">Windows Update MultiTenant</a> by  <a href="https://mrtn.blog" target="_blank">Maarten Schmeitz (mrtn.blog)</a>
+    </div>
 </div>
 <script>
     // Chart.js data per klant
