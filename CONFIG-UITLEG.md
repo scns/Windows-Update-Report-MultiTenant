@@ -43,6 +43,14 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
 - **Standaard**: "archive"
 - **Beschrijving**: De naam van de directory waar oude export bestanden naartoe worden verplaatst wanneer `cleanupOldExports` is ingeschakeld. Dit pad is relatief ten opzichte van de script locatie. De directory wordt automatisch aangemaakt als deze niet bestaat.
 
+### `autoOpenHtmlReport`
+
+- **Type**: Boolean (true/false)
+- **Standaard**: true
+- **Beschrijving**: Bepaalt of het gegenereerde HTML-rapport automatisch wordt geopend in de standaard webbrowser nadat het script is voltooid.
+  - `true`: Het HTML-rapport wordt automatisch geopend in de standaard webbrowser
+  - `false`: Het HTML-rapport wordt niet automatisch geopend (handig voor server omgevingen of geautomatiseerde runs)
+
 ## Voorbeeld Configuratie
 
 ```json
@@ -50,7 +58,8 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
     "exportRetentionCount": 40,
     "cleanupOldExports": true,
     "exportDirectory": "exports",
-    "archiveDirectory": "archive"
+    "archiveDirectory": "archive",
+    "autoOpenHtmlReport": true
 }
 ```
 
@@ -60,3 +69,4 @@ Met deze instellingen:
 - Oudere bestanden worden automatisch verplaatst naar de "archive" folder
 - Nieuwe exports gaan naar de "exports" directory
 - Gearchiveerde bestanden gaan naar de "archive" directory
+- Het HTML-rapport wordt automatisch geopend in de webbrowser
