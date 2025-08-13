@@ -51,7 +51,6 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
   - `true`: Het HTML-rapport wordt automatisch geopend in de standaard webbrowser
   - `false`: Het HTML-rapport wordt niet automatisch geopend (handig voor server omgevingen of geautomatiseerde runs)
 
-
 ### `lastSeenDaysFilter`
 
 - **Type**: Number

@@ -84,7 +84,6 @@ Het `credentials.json` bestand heeft het volgende format:
 
 Het `config.json` bestand bevat alle instellingen:
 
-
 ```json
 {
   "exportRetentionCount": 40,
