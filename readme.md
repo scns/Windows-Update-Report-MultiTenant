@@ -84,13 +84,15 @@ Het `credentials.json` bestand heeft het volgende format:
 
 Het `config.json` bestand bevat alle instellingen:
 
+
 ```json
 {
-    "exportRetentionCount": 40,
-    "cleanupOldExports": true,
-    "exportDirectory": "exports",
-    "archiveDirectory": "archive",
-    "autoOpenHtmlReport": true
+  "exportRetentionCount": 40,
+  "cleanupOldExports": true,
+  "exportDirectory": "exports",
+  "archiveDirectory": "archive",
+  "autoOpenHtmlReport": true,
+  "lastSeenDaysFilter": 0
 }
 ```
 
@@ -101,6 +103,7 @@ Het `config.json` bestand bevat alle instellingen:
 - `exportDirectory`: Directory waar nieuwe export bestanden worden opgeslagen
 - `archiveDirectory`: Directory waar oude export bestanden worden gearchiveerd
 - `autoOpenHtmlReport`: Automatisch openen van HTML-rapport in webbrowser (true/false)
+- `lastseenDaysFilter` : Filtert de rapportage (tabel én grafiek) op basis van het aantal dagen sinds een device voor het laatst gezien is.
 
 > 📖 **Gedetailleerde configuratie uitleg**: Voor uitgebreide informatie over elke configuratie optie, zie [CONFIG-UITLEG.md](CONFIG-UITLEG.md)
 

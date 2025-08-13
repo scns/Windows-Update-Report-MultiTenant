@@ -51,6 +51,17 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
   - `true`: Het HTML-rapport wordt automatisch geopend in de standaard webbrowser
   - `false`: Het HTML-rapport wordt niet automatisch geopend (handig voor server omgevingen of geautomatiseerde runs)
 
+
+### `lastSeenDaysFilter`
+
+- **Type**: Number
+- **Standaard**: 0
+- **Beschrijving**: Filtert de rapportage (tabel én grafiek) op basis van het aantal dagen sinds een device voor het laatst gezien is.
+  - `0`: Alle devices worden weergegeven
+  - `>0`: Alleen devices die in de laatste N dagen zijn gezien worden getoond
+
+Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-dashboard.
+
 ## Voorbeeld Configuratie
 
 ```json
@@ -59,7 +70,8 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
     "cleanupOldExports": true,
     "exportDirectory": "exports",
     "archiveDirectory": "archive",
-    "autoOpenHtmlReport": true
+    "autoOpenHtmlReport": true,
+    "lastSeenDaysFilter": 0
 }
 ```
 
@@ -70,3 +82,4 @@ Met deze instellingen:
 - Nieuwe exports gaan naar de "exports" directory
 - Gearchiveerde bestanden gaan naar de "archive" directory
 - Het HTML-rapport wordt automatisch geopend in de webbrowser
+- De rapportage wordt gefilterd op basis van het aantal dagen sinds een device voor het laatst gezien is (indien ingesteld)
