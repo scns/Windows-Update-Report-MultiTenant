@@ -18,7 +18,7 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 - **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant
 - **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
-- **Automatische browser integratie**: Opent het gegenereerde rapport automatisch in de standaard webbrowser
+- **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport in de standaard webbrowser
 
 ## Benodigdheden
 
@@ -89,7 +89,8 @@ Het `config.json` bestand bevat alle instellingen:
     "exportRetentionCount": 40,
     "cleanupOldExports": true,
     "exportDirectory": "exports",
-    "archiveDirectory": "archive"
+    "archiveDirectory": "archive",
+    "autoOpenHtmlReport": true
 }
 ```
 
@@ -99,6 +100,7 @@ Het `config.json` bestand bevat alle instellingen:
 - `cleanupOldExports`: Schakel automatische archivering in/uit (true/false)
 - `exportDirectory`: Directory waar nieuwe export bestanden worden opgeslagen
 - `archiveDirectory`: Directory waar oude export bestanden worden gearchiveerd
+- `autoOpenHtmlReport`: Automatisch openen van HTML-rapport in webbrowser (true/false)
 
 > 📖 **Gedetailleerde configuratie uitleg**: Voor uitgebreide informatie over elke configuratie optie, zie [CONFIG-UITLEG.md](CONFIG-UITLEG.md)
 
