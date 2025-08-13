@@ -22,16 +22,17 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
-2025-08-05
+2025-08-13
 
 .VERSIE
-2.0
+3.0
 #>
 
-# Import configuratie
-    $ProjectVersion = "2.0"
-    $LastEditDate = "2025-08-05"
+#Versie-informatie
+    $ProjectVersion = "3.0"
+    $LastEditDate = "2025-08-13"
 
+# Import configuratie
     try {
     $configJson = Get-Content -Path ".\config.json" -Raw
     $config = $configJson | ConvertFrom-Json
