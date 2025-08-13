@@ -29,6 +29,7 @@ Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 #>
 
 # Import configuratie
+    $ProjectVersion = "2.0"
 try {
     $configJson = Get-Content -Path ".\config.json" -Raw
     $config = $configJson | ConvertFrom-Json
@@ -609,7 +610,7 @@ $Html = @"
     $CustomerTables
     
     <div class="footer">
-        Powered by <a href="https://github.com/scns/Windows-Update-Report-MultiTenant" target="_blank">Windows Update MultiTenant</a> by  <a href="https://mrtn.blog" target="_blank">Maarten Schmeitz (mrtn.blog)</a>
+    Powered by <a href="https://github.com/scns/Windows-Update-Report-MultiTenant" target="_blank">Windows Update MultiTenant</a> <span style="font-weight:normal;color:#888;">v$ProjectVersion</span> by  <a href="https://mrtn.blog" target="_blank">Maarten Schmeitz (mrtn.blog)</a>
     </div>
 </div>
 <script>
