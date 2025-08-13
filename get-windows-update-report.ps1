@@ -451,6 +451,8 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
     $CustomerTables += @"
     <div id="$Customer" class="tabcontent" style="display:none">
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
+        <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-full.csv', false)">Exporteren volledige tabel</button>
+        <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-filtered.csv', true)">Exporteren gefilterde rijen</button>
         <table id="overviewTable_$Customer" class="display" style="width:100%">
             <thead>
                 <tr>
@@ -478,7 +480,8 @@ $(document).ready(function() {
                 "order": [[2, "desc"]],
                 "language": {
                     "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
-                }
+                },
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
             });
             // Kolomfilters toevoegen
             $('#' + tableId + ' thead th').each(function (i) {
@@ -492,9 +495,46 @@ $(document).ready(function() {
             });
         }
     }
-    
     // Maak initializeDataTable globaal beschikbaar
     window.initializeDataTable = initializeDataTable;
+
+    // Export functie voor CSV
+    window.exportTableToCSV = function(tableId, filename) {
+        var csv = [];
+        var table = $('#' + tableId).DataTable();
+        // Header
+        var header = [];
+        $('#' + tableId + ' thead th').each(function() {
+            header.push('"' + $(this).text().replace(/"/g, '""') + '"');
+        });
+        csv.push(header.join(','));
+        // Data rows
+        var onlyFiltered = arguments.length > 2 ? arguments[2] : false;
+        var rowsToExport = onlyFiltered ? table.rows({ search: 'applied' }) : table.rows();
+        rowsToExport.every(function(rowIdx, tableLoop, rowLoop) {
+            var data = this.data();
+            if (Array.isArray(data)) {
+                var row = data.map(function(cell) {
+                    return '"' + String(cell).replace(/"/g, '""') + '"';
+                });
+                csv.push(row.join(','));
+            } else {
+                var row = [];
+                $(this.node()).find('td').each(function() {
+                    row.push('"' + $(this).text().replace(/"/g, '""') + '"');
+                });
+                csv.push(row.join(','));
+            }
+        });
+        var csvString = csv.join('\n');
+        var blob = new Blob([csvString], { type: 'text/csv' });
+        var link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 });
 '@
 
