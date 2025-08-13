@@ -371,29 +371,32 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
     $CountData = $CountDataArray -join ","
     $ClientData = $ClientDataArray -join ","
     
-    $BaseColor = "$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255),$(Get-Random -Minimum 0 -Maximum 255)"
-    
+    $credObj = $data.LoginCredentials | Where-Object { $_.customername -eq $Customer }
+    $HexColor = $credObj.color
+    # Fallback: als geen kleur, gebruik blauw
+    if (-not $HexColor) { $HexColor = '#1f77b4' }
+
     # Dataset 1: Updates (volle lijn)
     $ChartDatasets += @"
         {
             label: '$Customer - Updates',
             data: [$CountData],
-            borderColor: 'rgb($BaseColor)',
-            backgroundColor: 'rgb($BaseColor)',
+            borderColor: '$HexColor',
+            backgroundColor: '$HexColor',
             fill: false,
             tension: 0.2,
             spanGaps: true,
             borderWidth: 2
         },
 "@
-    
+
     # Dataset 2: Clients (gestippelde lijn)
     $ChartDatasets += @"
         {
             label: '$Customer - Clients',
             data: [$ClientData],
-            borderColor: 'rgba($BaseColor, 0.6)',
-            backgroundColor: 'rgba($BaseColor, 0.6)',
+            borderColor: '$HexColor',
+            backgroundColor: '$HexColor',
             fill: false,
             tension: 0.2,
             spanGaps: true,
@@ -401,19 +404,19 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
             borderDash: [5, 5]
         },
 "@
-    
+
     # Voeg data toe voor individuele klant grafieken
     $CustomerLabels = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { "'$($_.Date)'" })
     $CustomerCountData = ($CountsPerDayPerCustomer[$Customer] | ForEach-Object { $_.TotalCount }) -join ","
     $CustomerClientData = ($ClientsPerDayPerCustomer[$Customer] | ForEach-Object { $_.ClientCount }) -join ","
-    
+
     $ChartDataJSON += @"
     '$Customer': {
         labels: [$($CustomerLabels -join ",")],
         countData: [$CustomerCountData],
         clientData: [$CustomerClientData],
-        borderColor: 'rgb($BaseColor)',
-        backgroundColor: 'rgb($BaseColor)'
+        borderColor: '$HexColor',
+        backgroundColor: '$HexColor'
     },
 "@
 }

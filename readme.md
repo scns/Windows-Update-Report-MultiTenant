@@ -63,12 +63,15 @@ Het `credentials.json` bestand heeft het volgende format:
       "ClientID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       "Secret": "YOUR-CLIENT-SECRET",
       "TenantID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "customername": "KlantNaam"
+      "customername": "KlantNaam",
+      "color": "#1f77b4"
     }
     // Voeg meer tenants toe indien nodig
   ]
 }
 ```
+
+**color**: Geef per klant een vaste HTML kleurcode op (hex, bijvoorbeeld `#1f77b4`). Deze kleur wordt gebruikt in de grafieken van het HTML-dashboard.
 
 #### Configuratie bestand
 
