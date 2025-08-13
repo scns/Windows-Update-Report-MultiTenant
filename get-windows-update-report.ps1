@@ -580,23 +580,30 @@ $Html = @"
 $HtmlPath = ".\$($config.exportDirectory)\Windows_Update_Overview.html"
 Set-Content -Path $HtmlPath -Value $Html -Encoding UTF8
 
-# Open het HTML bestand automatisch in de standaard webbrowser
+# Open het HTML bestand automatisch in de standaard webbrowser (indien geconfigureerd)
 Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
-Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
-try {
-    if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html")))
-    {
-        Start-Process $HtmlPath
-        Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+
+if ($config.autoOpenHtmlReport -eq $true) {
+    Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
+    try {
+        if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html")))
+        {
+            Start-Process $HtmlPath
+            Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
+        }
+        else {
+            Write-Warning "Het HTML rapportbestand bestaat niet: $HtmlPath"
+            Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+        }
     }
-    else {
-        Write-Warning "Het HTML rapportbestand bestaat niet: $HtmlPath"
-        Write-host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+    catch {
+        Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
+        Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
     }
 }
-catch {
-    Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
-    Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
+else {
+    Write-Host "Automatisch openen van rapport is uitgeschakeld in configuratie." -ForegroundColor Yellow
+    Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Cyan
 }
 
 Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in de exports directory." -ForegroundColor Green
