@@ -557,25 +557,48 @@ $Html = @"
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
     $DataTablesScript
+    // Dark mode toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('darkModeToggle');
+        if (btn) {
+            btn.addEventListener('click', function() {
+                document.body.classList.toggle('darkmode');
+                btn.textContent = document.body.classList.contains('darkmode') ? '☀️ Light mode' : '🌙 Dark mode';
+            });
+        }
+    });
     </script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 1200px; margin: auto; }
-        canvas { background: #fff; }
-        table.dataTable thead th { background: #eee; }
-        .tab { overflow: hidden; border-bottom: 1px solid #ccc; }
-        .tab button { background-color: #f1f1f1; float: left; border: none; outline: none; cursor: pointer; padding: 10px 20px; transition: 0.3s; }
-        .tab button:hover { background-color: #ddd; }
-        .tab button.active { background-color: #ccc; }
-        .tabcontent { display: none; padding: 20px 0; }
-        .footer { margin-top: 40px; padding: 20px 0; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px; }
-        .footer a { color: #0066cc; text-decoration: none; }
-        .footer a:hover { text-decoration: underline; }
+    body { font-family: Arial, sans-serif; margin: 40px; background: #fff; color: #222; transition: background 0.2s, color 0.2s; }
+    .container { max-width: 1200px; margin: auto; }
+    canvas { background: #fff; }
+    table.dataTable thead th { background: #eee; }
+    .tab { overflow: hidden; border-bottom: 1px solid #ccc; }
+    .tab button { background-color: #f1f1f1; float: left; border: none; outline: none; cursor: pointer; padding: 10px 20px; transition: 0.3s; }
+    .tab button:hover { background-color: #ddd; }
+    .tab button.active { background-color: #ccc; }
+    .tabcontent { display: none; padding: 20px 0; }
+    .footer { margin-top: 40px; padding: 20px 0; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px; }
+    .footer a { color: #0066cc; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    /* Dark mode styles */
+    body.darkmode { background: #181a1b; color: #eee; }
+    body.darkmode .container { background: #181a1b; }
+    body.darkmode canvas { background: #222; }
+    body.darkmode table.dataTable thead th { background: #222; color: #eee; }
+    body.darkmode .tab { border-bottom: 1px solid #444; }
+    body.darkmode .tab button { background-color: #222; color: #eee; }
+    body.darkmode .tab button:hover { background-color: #333; }
+    body.darkmode .tab button.active { background-color: #444; }
+    body.darkmode .tabcontent { background: #181a1b; color: #eee; }
+    body.darkmode .footer { border-top: 1px solid #444; color: #aaa; }
+    body.darkmode .footer a { color: #66aaff; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Windows Update Overview</h1>
+    <h1>Windows Update Overview <button id="darkModeToggle" style="float:right;margin-left:20px;">🌙 Dark mode</button></h1>
+
     <p>Laatst uitgevoerd op: $LastRunDate</p>
     <h2>Totale Count per dag per klant</h2>
     <canvas id="countChart" height="100"></canvas>
