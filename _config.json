@@ -3,5 +3,6 @@
     "cleanupOldExports": true,
     "exportDirectory": "exports",
     "archiveDirectory": "archive",
-    "autoOpenHtmlReport": true
+    "autoOpenHtmlReport": true,
+    "lastSeenDaysFilter": 0
 }
