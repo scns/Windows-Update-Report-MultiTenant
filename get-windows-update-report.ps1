@@ -448,9 +448,11 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
         }
     }
     $CustomerTabs += '<button class="tablinks" onclick="openCustomer(event, ''' + $Customer + ''')">' + $Customer + ' (' + $RowCount + ')</button>'
+    $lastSeenText = ($filterDays -eq 0) ? 'Dit zijn alle machines die gevonden kunnen worden.' : "Deze machines zijn de laatste $filterDays dagen online geweest.";
     $CustomerTables += @"
     <div id="$Customer" class="tabcontent" style="display:none">
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
+        <p style='font-style:italic;color:#555;'>$lastSeenText</p>
         <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-full.csv', false)">Exporteren volledige tabel</button>
         <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-filtered.csv', true)">Exporteren gefilterde rijen</button>
         <table id="overviewTable_$Customer" class="display" style="width:100%">
