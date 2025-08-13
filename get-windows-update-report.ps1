@@ -248,19 +248,38 @@ $LatestDatePerCustomer = @{}
 $LatestCsvPerCustomer = @{}
 foreach ($file in $OverviewFiles) {
     $csv = Import-Csv $file.FullName
-    $TotalCount = ($csv | Measure-Object -Property Count -Sum).Sum
-    $ClientCount = $csv.Count  # Aantal rijen = aantal clients
     $parts = $file.Name -split "_"
     $Date = $parts[0]
     $Customer = $parts[1]
-    
+    $now = Get-Date
+    $filterDays = [int]$config.lastSeenDaysFilter
+    $filteredRows = @()
+    foreach ($row in $csv) {
+        $includeRow = $true
+        if ($filterDays -gt 0 -and $row.LastSeen) {
+            $lastSeenDate = $null
+            try {
+                $lastSeenDate = [datetime]::Parse($row.LastSeen)
+            } catch {}
+            if ($lastSeenDate) {
+                $daysAgo = ($now - $lastSeenDate).TotalDays
+                if ($daysAgo -gt $filterDays) {
+                    $includeRow = $false
+                }
+            }
+        }
+        if ($includeRow) {
+            $filteredRows += $row
+        }
+    }
+    $TotalCount = ($filteredRows | Measure-Object -Property Count -Sum).Sum
+    $ClientCount = $filteredRows.Count
     if (-not $CountsPerDayPerCustomer.ContainsKey($Customer)) {
         $CountsPerDayPerCustomer[$Customer] = @()
     }
     if (-not $ClientsPerDayPerCustomer.ContainsKey($Customer)) {
         $ClientsPerDayPerCustomer[$Customer] = @()
     }
-    
     $CountsPerDayPerCustomer[$Customer] += [PSCustomObject]@{
         Date = $Date
         TotalCount = $TotalCount
@@ -269,11 +288,10 @@ foreach ($file in $OverviewFiles) {
         Date = $Date
         ClientCount = $ClientCount
     }
-    
     # Bepaal de laatste datum per klant
     if (-not $LatestDatePerCustomer.ContainsKey($Customer) -or ($Date -gt $LatestDatePerCustomer[$Customer])) {
         $LatestDatePerCustomer[$Customer] = $Date
-        $LatestCsvPerCustomer[$Customer] = $csv
+        $LatestCsvPerCustomer[$Customer] = $filteredRows
     }
 }
 
@@ -296,15 +314,45 @@ $ChartDataJSON = "{"
 foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
     # Maak hashtables voor snelle lookup van data per datum
     $CustomerCountLookup = @{}
-    foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
-        $CustomerCountLookup[$DataPoint.Date] = $DataPoint.TotalCount
-    }
-    
     $CustomerClientLookup = @{}
-    foreach ($DataPoint in $ClientsPerDayPerCustomer[$Customer]) {
-        $CustomerClientLookup[$DataPoint.Date] = $DataPoint.ClientCount
+    $now = Get-Date
+    $filterDays = [int]$config.lastSeenDaysFilter
+    foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
+        $includeRow = $true
+        if ($filterDays -gt 0 -and $DataPoint.PSObject.Properties["LastSeen"] -and $DataPoint.LastSeen) {
+            $lastSeenDate = $null
+            try {
+                $lastSeenDate = [datetime]::Parse($DataPoint.LastSeen)
+            } catch {}
+            if ($lastSeenDate) {
+                $daysAgo = ($now - $lastSeenDate).TotalDays
+                if ($daysAgo -gt $filterDays) {
+                    $includeRow = $false
+                }
+            }
+        }
+        if ($includeRow) {
+            $CustomerCountLookup[$DataPoint.Date] = $DataPoint.TotalCount
+        }
     }
-    
+    foreach ($DataPoint in $ClientsPerDayPerCustomer[$Customer]) {
+        $includeRow = $true
+        if ($filterDays -gt 0 -and $DataPoint.PSObject.Properties["LastSeen"] -and $DataPoint.LastSeen) {
+            $lastSeenDate = $null
+            try {
+                $lastSeenDate = [datetime]::Parse($DataPoint.LastSeen)
+            } catch {}
+            if ($lastSeenDate) {
+                $daysAgo = ($now - $lastSeenDate).TotalDays
+                if ($daysAgo -gt $filterDays) {
+                    $includeRow = $false
+                }
+            }
+        }
+        if ($includeRow) {
+            $CustomerClientLookup[$DataPoint.Date] = $DataPoint.ClientCount
+        }
+    }
     # Bouw data arrays met null-waarden voor ontbrekende datums
     $CountDataArray = @()
     $ClientDataArray = @()
@@ -314,7 +362,6 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
         } else {
             $CountDataArray += "null"
         }
-        
         if ($CustomerClientLookup.ContainsKey($Date)) {
             $ClientDataArray += $CustomerClientLookup[$Date]
         } else {
@@ -379,14 +426,33 @@ $CustomerTables = ""
 foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
     $TableRows = ""
     $RowCount = 0
+    $now = Get-Date
+    $filterDays = [int]$config.lastSeenDaysFilter
     foreach ($row in $LatestCsvPerCustomer[$Customer]) {
-        $TableRows += "<tr><td>$($row.Device)</td><td>$($row.'Missing Updates')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
-        $RowCount++
+        $includeRow = $true
+        if ($filterDays -gt 0 -and $row.LastSeen) {
+            $lastSeenDate = $null
+            try {
+                $lastSeenDate = [datetime]::Parse($row.LastSeen)
+            } catch {}
+            if ($lastSeenDate) {
+                $daysAgo = ($now - $lastSeenDate).TotalDays
+                if ($daysAgo -gt $filterDays) {
+                    $includeRow = $false
+                }
+            }
+        }
+        if ($includeRow) {
+            $TableRows += "<tr><td>$($row.Device)</td><td>$($row.'Missing Updates')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            $RowCount++
+        }
     }
     $CustomerTabs += '<button class="tablinks" onclick="openCustomer(event, ''' + $Customer + ''')">' + $Customer + ' (' + $RowCount + ')</button>'
     $CustomerTables += @"
     <div id="$Customer" class="tabcontent" style="display:none">
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
+        <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-full.csv', false)">Exporteren volledige tabel</button>
+        <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-filtered.csv', true)">Exporteren gefilterde rijen</button>
         <table id="overviewTable_$Customer" class="display" style="width:100%">
             <thead>
                 <tr>
@@ -414,7 +480,8 @@ $(document).ready(function() {
                 "order": [[2, "desc"]],
                 "language": {
                     "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
-                }
+                },
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
             });
             // Kolomfilters toevoegen
             $('#' + tableId + ' thead th').each(function (i) {
@@ -428,9 +495,46 @@ $(document).ready(function() {
             });
         }
     }
-    
     // Maak initializeDataTable globaal beschikbaar
     window.initializeDataTable = initializeDataTable;
+
+    // Export functie voor CSV
+    window.exportTableToCSV = function(tableId, filename) {
+        var csv = [];
+        var table = $('#' + tableId).DataTable();
+        // Header
+        var header = [];
+        $('#' + tableId + ' thead th').each(function() {
+            header.push('"' + $(this).text().replace(/"/g, '""') + '"');
+        });
+        csv.push(header.join(','));
+        // Data rows
+        var onlyFiltered = arguments.length > 2 ? arguments[2] : false;
+        var rowsToExport = onlyFiltered ? table.rows({ search: 'applied' }) : table.rows();
+        rowsToExport.every(function(rowIdx, tableLoop, rowLoop) {
+            var data = this.data();
+            if (Array.isArray(data)) {
+                var row = data.map(function(cell) {
+                    return '"' + String(cell).replace(/"/g, '""') + '"';
+                });
+                csv.push(row.join(','));
+            } else {
+                var row = [];
+                $(this.node()).find('td').each(function() {
+                    row.push('"' + $(this).text().replace(/"/g, '""') + '"');
+                });
+                csv.push(row.join(','));
+            }
+        });
+        var csvString = csv.join('\n');
+        var blob = new Blob([csvString], { type: 'text/csv' });
+        var link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 });
 '@
 
