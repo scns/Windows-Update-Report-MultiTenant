@@ -61,6 +61,36 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
 
 Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-dashboard.
 
+### `backup`
+
+- **Type**: Object
+- **Beschrijving**: Instellingen voor automatische back-ups van exports, archief en configuratiebestanden.
+
+#### `enableExportBackup`
+
+- **Type**: Boolean
+- **Beschrijving**: Schakelt back-up van de exports directory in/uit.
+
+#### `enableArchiveBackup`
+
+- **Type**: Boolean
+- **Beschrijving**: Schakelt back-up van de archive directory in/uit.
+
+#### `enableConfigBackup`
+
+- **Type**: Boolean
+- **Beschrijving**: Schakelt back-up van config.json en credentials.json in/uit.
+
+#### `exportBackupRetention`, `archiveBackupRetention`, `configBackupRetention`
+
+- **Type**: Number
+- **Beschrijving**: Aantal te bewaren back-ups per type. Overtollige back-ups worden automatisch verwijderd.
+
+#### `backupRoot`, `exportBackupSubfolder`, `archiveBackupSubfolder`, `configBackupSubfolder`
+
+- **Type**: String
+- **Beschrijving**: Paden voor de root en subfolders van back-ups. Je kunt deze aanpassen naar wens.
+
 ## Voorbeeld Configuratie
 
 ```json
@@ -70,7 +100,19 @@ Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-da
     "exportDirectory": "exports",
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
-    "lastSeenDaysFilter": 0
+    "lastSeenDaysFilter": 0,
+    "backup": {
+        "enableExportBackup": true,
+        "enableArchiveBackup": true,
+        "enableConfigBackup": true,
+        "exportBackupRetention": 5,
+        "archiveBackupRetention": 5,
+        "configBackupRetention": 5,
+        "backupRoot": "backup",
+        "exportBackupSubfolder": "export_backup",
+        "archiveBackupSubfolder": "archive_backup",
+        "configBackupSubfolder": "config_backup"
+    }
 }
 ```
 
@@ -82,3 +124,4 @@ Met deze instellingen:
 - Gearchiveerde bestanden gaan naar de "archive" directory
 - Het HTML-rapport wordt automatisch geopend in de webbrowser
 - De rapportage wordt gefilterd op basis van het aantal dagen sinds een device voor het laatst gezien is (indien ingesteld)
+- Back-ups worden gemaakt van de exports, archief en configuratiebestanden volgens de opgegeven instellingen
