@@ -750,3 +750,73 @@ else {
 }
 
 Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in de exports directory." -ForegroundColor Green
+###############################################################
+# BACKUP LOGIC: Zip exports, archive, config/credentials
+###############################################################
+
+
+# Backup root and subfolders from config
+$BackupRoot = "./$($config.backup.backupRoot)"
+$BackupExportDir = Join-Path $BackupRoot $config.backup.exportBackupSubfolder
+$BackupArchiveDir = Join-Path $BackupRoot $config.backup.archiveBackupSubfolder
+$BackupConfigDir = Join-Path $BackupRoot $config.backup.configBackupSubfolder
+
+# Ensure backup folders exist
+foreach ($dir in @($BackupRoot, $BackupExportDir, $BackupArchiveDir, $BackupConfigDir)) {
+    if (-not (Test-Path -Path $dir -PathType Container)) {
+        New-Item -Path $dir -ItemType Directory | Out-Null
+    }
+}
+
+# Helper: Create zip and enforce retention
+function New-ZipBackup {
+    param(
+        [string]$SourcePath,
+        [string]$BackupFolder,
+        [string]$BackupPrefix,
+        [int]$RetentionCount
+    )
+    $timestamp = Get-Date -Format "yyyyMMdd"
+    $zipName = "$BackupPrefix-$timestamp.zip"
+    $zipPath = Join-Path $BackupFolder $zipName
+    Compress-Archive -Path $SourcePath -DestinationPath $zipPath -Force
+    # Retention: Remove oldest if over limit
+    $zips = Get-ChildItem -Path $BackupFolder -Filter "$BackupPrefix-*.zip" | Sort-Object LastWriteTime -Descending
+    if ($zips.Count -gt $RetentionCount) {
+        $zipsToRemove = $zips | Select-Object -Skip $RetentionCount
+        foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+    }
+    Write-Host "Backup gemaakt: $zipPath" -ForegroundColor Green
+}
+
+# Export backup
+if ($config.backup.enableExportBackup -eq $true) {
+    $ExportSource = "$ExportDir/*"
+    New-ZipBackup -SourcePath $ExportSource -BackupFolder $BackupExportDir -BackupPrefix "export" -RetentionCount $config.backup.exportBackupRetention
+}
+
+# Archive backup
+if ($config.backup.enableArchiveBackup -eq $true) {
+    $ArchiveSource = "$ArchiveDir/*"
+    New-ZipBackup -SourcePath $ArchiveSource -BackupFolder $BackupArchiveDir -BackupPrefix "archive" -RetentionCount $config.backup.archiveBackupRetention
+}
+
+# Config/Credentials backup
+if ($config.backup.enableConfigBackup -eq $true) {
+    $ConfigFiles = @()
+    if (Test-Path -Path "./config.json" -PathType Leaf) { $ConfigFiles += "./config.json" }
+    if (Test-Path -Path "./credentials.json" -PathType Leaf) { $ConfigFiles += "./credentials.json" }
+    if ($ConfigFiles.Count -gt 0) {
+        $ConfigZipName = "configcreds-$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
+        $ConfigZipPath = Join-Path $BackupConfigDir $ConfigZipName
+        Compress-Archive -Path $ConfigFiles -DestinationPath $ConfigZipPath -Force
+        $zips = Get-ChildItem -Path $BackupConfigDir -Filter "configcreds-*.zip" | Sort-Object LastWriteTime -Descending
+        if ($zips.Count -gt $config.backup.configBackupRetention) {
+            $zipsToRemove = $zips | Select-Object -Skip $config.backup.configBackupRetention
+            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+        }
+        Write-Host "Backup gemaakt: $ConfigZipPath" -ForegroundColor Green
+    }
+}
+
+Write-Host "Backups voltooid en opgeslagen in de backup directory." -ForegroundColor Cyan
