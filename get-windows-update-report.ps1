@@ -811,7 +811,7 @@ if ($config.backup.enableConfigBackup -eq $true) {
     if (Test-Path -Path "./config.json" -PathType Leaf) { $ConfigFiles += "./config.json" }
     if (Test-Path -Path "./credentials.json" -PathType Leaf) { $ConfigFiles += "./credentials.json" }
     if ($ConfigFiles.Count -gt 0) {
-        $ConfigZipName = "configcreds-$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
+        $ConfigZipName = "configcreds-$(Get-Date -Format 'yyyyMMdd').zip"
         $ConfigZipPath = Join-Path $BackupConfigDir $ConfigZipName
         Compress-Archive -Path $ConfigFiles -DestinationPath $ConfigZipPath -Force
         $zips = Get-ChildItem -Path $BackupConfigDir -Filter "configcreds-*.zip" | Sort-Object LastWriteTime -Descending
