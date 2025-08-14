@@ -1,4 +1,3 @@
-
 # Windows Update Report MultiTenant
 
 | Repository Status | Windows Update Report |
@@ -19,6 +18,7 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 - **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
 - **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport in de standaard webbrowser
+- **Automatische back-up**: Maakt automatisch back-ups van exports, archief en configuratiebestanden
 
 ## Benodigdheden
 
@@ -177,6 +177,37 @@ Windows-Update-Report-MultiTenant/
 - **Automatische browser integratie**: HTML rapport wordt automatisch geopend
 - **Verbeterde feedback**: Kleurgecodeerde status berichten tijdens uitvoering
 - **Intelligente bestandsbeheer**: Configureerbaar aantal bestanden dat behouden blijft
+
+## Backup functionaliteit
+
+Het script ondersteunt automatische back-ups van exports, archief en configuratiebestanden:
+
+- **Export back-up**: Maakt een zip-bestand van de exports directory
+- **Archief back-up**: Maakt een zip-bestand van de archive directory
+- **Config back-up**: Maakt een zip-bestand van config.json en credentials.json
+- **Retentie**: Het aantal te bewaren back-ups is instelbaar per type
+- **Configuratie**: Alle paden en instellingen zijn te beheren via `config.json`
+
+### Configuratie opties
+
+In het `config.json` bestand kun je per back-up type instellen of deze actief is en hoeveel back-ups bewaard blijven. Je kunt ook de root en subfolders voor back-ups aanpassen:
+
+```json
+"backup": {
+    "enableExportBackup": true,
+    "enableArchiveBackup": true,
+    "enableConfigBackup": true,
+    "exportBackupRetention": 5,
+    "archiveBackupRetention": 5,
+    "configBackupRetention": 5,
+    "backupRoot": "backup",
+    "exportBackupSubfolder": "export_backup",
+    "archiveBackupSubfolder": "archive_backup",
+    "configBackupSubfolder": "config_backup"
+}
+```
+
+Back-ups worden opgeslagen in de opgegeven subfolders onder de root. Overtollige back-ups worden automatisch verwijderd.
 
 ## Opmerkingen
 

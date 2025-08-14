@@ -4,5 +4,17 @@
     "exportDirectory": "exports",
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
-    "lastSeenDaysFilter": 0
+    "lastSeenDaysFilter": 0,
+    "backup": {
+        "enableExportBackup": true,
+        "enableArchiveBackup": true,
+        "enableConfigBackup": true,
+        "exportBackupRetention": 5,
+        "archiveBackupRetention": 5,
+        "configBackupRetention": 5,
+        "backupRoot": "backup",
+        "exportBackupSubfolder": "export_backup",
+        "archiveBackupSubfolder": "archive_backup",
+        "configBackupSubfolder": "config_backup"
+    }
 }

@@ -2,5 +2,6 @@ credentials.json
 Krabbels.ps1
 Exports/
 archive/
+backup/
 Windows-Update-Report-MultiTenant.code-workspace
 config.json
