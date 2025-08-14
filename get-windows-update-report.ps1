@@ -562,6 +562,7 @@ $Html = @"
     <title>Windows Update Overview</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
@@ -572,8 +573,14 @@ $Html = @"
         if (btn) {
             btn.addEventListener('click', function() {
                 document.body.classList.toggle('darkmode');
-                btn.textContent = document.body.classList.contains('darkmode') ? '☀️ Light mode' : '🌙 Dark mode';
+                if (document.body.classList.contains('darkmode')) {
+                    btn.innerHTML = '<i class="fa-solid fa-sun"></i> Light mode';
+                } else {
+                    btn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark mode';
+                }
             });
+            // Set initial icon
+            btn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark mode';
         }
     });
     </script>
@@ -606,7 +613,7 @@ $Html = @"
 </head>
 <body>
 <div class="container">
-    <h1>Windows Update Overview <button id="darkModeToggle" style="float:right;margin-left:20px;">🌙 Dark mode</button></h1>
+    <h1>Windows Update Overview <button id="darkModeToggle" style="float:right;margin-left:20px;"><i class="fa-solid fa-moon"></i> Dark mode</button></h1>
 
     <p>Laatst uitgevoerd op: $LastRunDate</p>
     <h2>Totale Count per dag per klant</h2>
