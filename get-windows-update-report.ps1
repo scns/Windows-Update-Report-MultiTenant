@@ -455,8 +455,9 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
         }
     }
     $CustomerTabs += '<button class="tablinks" onclick="openCustomer(event, ''' + $Customer + ''')">' + $Customer + ' (' + $RowCount + ')</button>'
-        if ($filterDays -eq 0) {
-        $lastSeenText = 'Dit zijn alle machines die gevonden kunnen worden.'
+
+    if ($filterDays -eq 0) {
+       $lastSeenText = 'Dit zijn alle machines die gevonden kunnen worden.'
     } else {
         $lastSeenText = "Deze machines zijn de laatste $filterDays dagen online geweest."
     }
