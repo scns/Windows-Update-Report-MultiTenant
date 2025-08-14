@@ -16,5 +16,8 @@
         "exportBackupSubfolder": "export_backup",
         "archiveBackupSubfolder": "archive_backup",
         "configBackupSubfolder": "config_backup"
-    }
+    },
+    "theme": {
+        "default": "dark"
+}
 }
