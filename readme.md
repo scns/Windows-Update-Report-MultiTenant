@@ -209,6 +209,16 @@ In het `config.json` bestand kun je per back-up type instellen of deze actief is
 
 Back-ups worden opgeslagen in de opgegeven subfolders onder de root. Overtollige back-ups worden automatisch verwijderd.
 
+## Dark mode toggle
+
+Het HTML-dashboard bevat een dark mode toggle-knop rechtsboven. Hiermee kun je eenvoudig wisselen tussen licht en donker thema. De knop gebruikt FontAwesome iconen (zon/maan) voor een consistente weergave in alle browsers.
+
+- **Werking:** Klik op de knop om te wisselen tussen light en dark mode.
+- **Iconen:** De knop toont automatisch een zon (light mode) of maan (dark mode) icoon.
+- **Compatibiliteit:** Door gebruik van FontAwesome worden de iconen overal correct weergegeven.
+
+Deze functie verbetert de leesbaarheid en gebruikerservaring, vooral bij gebruik in donkere omgevingen.
+
 ## Opmerkingen
 
 - Zorg dat je app registration alleen de genoemde permissies bevat.
