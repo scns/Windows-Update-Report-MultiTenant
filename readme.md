@@ -209,6 +209,19 @@ In het `config.json` bestand kun je per back-up type instellen of deze actief is
 
 Back-ups worden opgeslagen in de opgegeven subfolders onder de root. Overtollige back-ups worden automatisch verwijderd.
 
+## Thema (dark/light mode)
+
+Het HTML-dashboard ondersteunt een dark/light modus. Je kunt de standaardmodus instellen via de configuratie:
+
+```json
+"theme": {
+    "default": "dark" // opties: "dark", "light"
+}
+```
+
+- **default**: Kies "dark" voor standaard donkere modus, of "light" voor standaard lichte modus.
+- Je kunt altijd handmatig wisselen via de knop rechtsboven in het dashboard.
+
 ## Dark mode toggle
 
 Het HTML-dashboard bevat een dark mode toggle-knop rechtsboven. Hiermee kun je eenvoudig wisselen tussen licht en donker thema. De knop gebruikt FontAwesome iconen (zon/maan) voor een consistente weergave in alle browsers.

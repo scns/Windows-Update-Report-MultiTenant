@@ -567,20 +567,26 @@ $Html = @"
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
     $DataTablesScript
-    // Dark mode toggle
+    // Dark mode toggle with manual config only
     document.addEventListener('DOMContentLoaded', function() {
+        var configThemeDefault = "$($config.theme.default)".toLowerCase();
         var btn = document.getElementById('darkModeToggle');
+        function setTheme(useDark) {
+            if (useDark) {
+                document.body.classList.add('darkmode');
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-sun"></i> Light mode';
+            } else {
+                document.body.classList.remove('darkmode');
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark mode';
+            }
+        }
+        // Set initial theme and button state
+        setTheme(configThemeDefault === "dark");
         if (btn) {
             btn.addEventListener('click', function() {
-                document.body.classList.toggle('darkmode');
-                if (document.body.classList.contains('darkmode')) {
-                    btn.innerHTML = '<i class="fa-solid fa-sun"></i> Light mode';
-                } else {
-                    btn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark mode';
-                }
+                var isDark = document.body.classList.contains('darkmode');
+                setTheme(!isDark);
             });
-            // Set initial icon
-            btn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark mode';
         }
     });
     </script>

@@ -91,6 +91,25 @@ Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-da
 - **Type**: String
 - **Beschrijving**: Paden voor de root en subfolders van back-ups. Je kunt deze aanpassen naar wens.
 
+### `theme`
+
+- **Type**: Object
+- **Beschrijving**: Instellingen voor het standaard dashboard-thema.
+
+#### `default`
+
+- **Type**: String
+- **Opties**: "dark", "light"
+- **Beschrijving**: Bepaalt of het dashboard standaard in donkere of lichte modus start. Je kunt altijd handmatig wisselen via de knop in het dashboard.
+
+**Voorbeeld:**
+
+```json
+"theme": {
+    "default": "dark"
+}
+```
+
 ## Voorbeeld Configuratie
 
 ```json
@@ -112,6 +131,9 @@ Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-da
         "exportBackupSubfolder": "export_backup",
         "archiveBackupSubfolder": "archive_backup",
         "configBackupSubfolder": "config_backup"
+    },
+    "theme": {
+        "default": "dark"
     }
 }
 ```
@@ -125,3 +147,4 @@ Met deze instellingen:
 - Het HTML-rapport wordt automatisch geopend in de webbrowser
 - De rapportage wordt gefilterd op basis van het aantal dagen sinds een device voor het laatst gezien is (indien ingesteld)
 - Back-ups worden gemaakt van de exports, archief en configuratiebestanden volgens de opgegeven instellingen
+- Het dashboard start standaard in donkere modus (kan handmatig gewijzigd worden)
