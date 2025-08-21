@@ -18,6 +18,7 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 - **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
 - **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport in de standaard webbrowser
+- **App Registration monitoring**: Controleert automatisch de geldigheid van client secrets en waarschuwt voor vervaldatums
 - **Automatische back-up**: Maakt automatisch back-ups van exports, archief en configuratiebestanden
 
 ## Benodigdheden
@@ -35,8 +36,9 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 3. Na het aanmaken, ga naar **API permissions**.
 4. **Verwijder alle standaard toegevoegde permissies** (zoals `User.Read`).
 5. Voeg de volgende Microsoft Graph **Application** permissies toe:
-    - `SecurityEvents.Read.All`
-    - `ThreatHunting.Read.All`
+    - `SecurityEvents.Read.All` - Voor het lezen van beveiligingsgegevens
+    - `ThreatHunting.Read.All` - Voor het uitvoeren van threat hunting queries
+    - `Application.Read.All` - Voor het controleren van App Registration geldigheid (client secret vervaldatums)
 6. Klik op **Grant admin consent** voor deze permissies.
 7. Ga naar **Certificates & secrets** en maak een nieuwe client secret aan. Noteer deze waarde direct.
 
@@ -127,8 +129,9 @@ De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik va
 
 1. Het script zal:
    - Automatisch benodigde modules installeren (indien nodig)
+   - App Registration geldigheid controleren per tenant (client secret vervaldatums)
    - Data ophalen van alle geconfigureerde tenants
-   - CSV-bestanden genereren per klant
+   - CSV-bestanden genereren per klant (inclusief App Registration status)
    - Oude bestanden archiveren (indien geconfigureerd)
    - Een HTML-dashboard genereren
    - Het rapport automatisch openen in je standaard webbrowser
@@ -175,6 +178,7 @@ Windows-Update-Report-MultiTenant/
 - **Configureerbare archivering**: Oude bestanden worden verplaatst naar archief in plaats van verwijderd
 - **Flexibele directory instellingen**: Configureerbare export en archief directories
 - **Automatische browser integratie**: HTML rapport wordt automatisch geopend
+- **App Registration monitoring**: Automatische controle van client secret vervaldatums met kleurgecodeerde waarschuwingen
 - **Verbeterde feedback**: Kleurgecodeerde status berichten tijdens uitvoering
 - **Intelligente bestandsbeheer**: Configureerbaar aantal bestanden dat behouden blijft
 
