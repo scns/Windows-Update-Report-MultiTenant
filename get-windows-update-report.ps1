@@ -181,13 +181,14 @@ foreach ($cred in $data.LoginCredentials) {
     #Create Query
     $Query = "DeviceTvmSoftwareVulnerabilities
     | distinct DeviceName, RecommendedSecurityUpdate, OSPlatform
-    | where OSPlatform != 'Linux'
+    | where OSPlatform startswith 'Windows'
     | summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
     | extend Count = array_length(MissingUpdates)
     | join kind=leftouter (
         DeviceInfo
         | summarize arg_max(Timestamp, *) by DeviceName
         | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform
+        | where OSPlatform startswith 'Windows'
     ) on DeviceName
     "
 
