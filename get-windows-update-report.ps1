@@ -228,6 +228,9 @@ $json = Get-Content -Path ".\credentials.json" -Raw
 # Convert JSON to PowerShell object
 $data = $json | ConvertFrom-Json
 
+# Verzamel App Registration informatie
+$AppRegistrationData = @{}
+
 foreach ($cred in $data.LoginCredentials) {
 
     Write-Host "Verwerken van klant: $($cred.customername)" -ForegroundColor Cyan
@@ -244,6 +247,9 @@ foreach ($cred in $data.LoginCredentials) {
     Write-Host "Controleren App Registration geldigheid..." -ForegroundColor White
     $AppValidity = Test-AppRegistrationValidity -TenantID $TenantID -ClientID $ClientID -ClientSecretCredential $ClientSecretCredential
     Write-Host "App Registration: $($AppValidity.Message)" -ForegroundColor $AppValidity.Color
+    
+    # Sla App Registration info op voor HTML rapport
+    $AppRegistrationData[$cred.customername] = $AppValidity
 
     #Connect to Graph using Application Secret
     Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential -NoWelcome | Out-Null
@@ -699,8 +705,38 @@ $Html = @"
     <canvas id="countChart" height="100"></canvas>
     <div class="tab">
         <button class="tablinks" onclick="showAllCustomers()">Alle klanten</button>
+        <button class="tablinks" onclick="showAppRegistrations()">App Registrations</button>
         $CustomerTabs
     </div>
+    
+    <!-- App Registrations Tab -->
+    <div id="AppRegistrations" class="tabcontent" style="display:none">
+        <h2>App Registration Status Overview</h2>
+        <table id="appRegTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Days Remaining</th>
+                    <th>Expiry Date</th>
+                </tr>
+            </thead>
+            <tbody>
+$(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
+    $appInfo = $AppRegistrationData[$customer]
+    $statusColor = switch ($appInfo.Color) {
+        "Green" { "color:green;" }
+        "Yellow" { "color:orange;" }
+        "Red" { "color:red;" }
+        default { "color:gray;" }
+    }
+    $expiryDateFormatted = if ($appInfo.ExpiryDate) { $appInfo.ExpiryDate.ToString("dd-MM-yyyy") } else { "N/A" }
+    "<tr><td>$customer</td><td style='$statusColor'>$($appInfo.Message)</td><td>$($appInfo.DaysRemaining)</td><td>$expiryDateFormatted</td></tr>"
+} -join "`n")
+            </tbody>
+        </table>
+    </div>
+    
     $CustomerTables
     
     <div class="footer">
@@ -784,6 +820,34 @@ $Html = @"
         }
     }
     
+    // Functie voor App Registrations tab
+    function showAppRegistrations() {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById("AppRegistrations").style.display = "block";
+        document.getElementsByClassName("tablinks")[1].className += " active";
+        
+        // Initialiseer DataTable voor App Registrations
+        if (typeof initializeDataTable === 'function') {
+            initializeDataTable('appRegTable');
+        }
+        
+        // Reset grafiek naar alle klanten zonder het tab te veranderen
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [
+            $ChartDatasets
+        ];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
+    }
+
     // Functie om alle klanten te tonen
     function showAllCustomers() {
         // Verberg alle tabcontent
@@ -798,6 +862,9 @@ $Html = @"
             tablinks[i].className = tablinks[i].className.replace(" active", "");
         }
         
+        // Activeer "Alle klanten" tab
+        document.getElementsByClassName("tablinks")[0].className += " active";
+        
         // Reset grafiek naar alle klanten
         chart.data.labels = [$ChartLabelsString];
         chart.data.datasets = [
@@ -805,6 +872,11 @@ $Html = @"
         ];
         chart.options.plugins.title.text = 'Alle klanten';
         chart.update();
+    }
+    
+    // Initialiseer de pagina bij het laden
+    window.onload = function() {
+        showAllCustomers();
     }
 </script>
 </body>

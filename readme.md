@@ -16,6 +16,7 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 - **Multi-tenant ondersteuning**: Haalt per tenant de ontbrekende Windows-updates op via Microsoft Graph Threat Hunting API
 - **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant
 - **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
+- **App Registration status monitoring**: Dedicated tabblad voor overzicht van client secret vervaldatums per tenant
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
 - **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport in de standaard webbrowser
 - **App Registration monitoring**: Controleert automatisch de geldigheid van client secrets en waarschuwt voor vervaldatums
@@ -235,6 +236,37 @@ Het HTML-dashboard bevat een dark mode toggle-knop rechtsboven. Hiermee kun je e
 - **Compatibiliteit:** Door gebruik van FontAwesome worden de iconen overal correct weergegeven.
 
 Deze functie verbetert de leesbaarheid en gebruikerservaring, vooral bij gebruik in donkere omgevingen.
+
+## App Registration Status Dashboard
+
+Het HTML-dashboard bevat een speciaal "App Registrations" tabblad dat een overzicht toont van alle client secret vervaldatums:
+
+### App Registration Dashboard Functionaliteit
+
+- **Centraal overzicht**: Alle tenants en hun App Registration status in één tabel
+- **Status indicatoren**: Kleurgecodeerde waarschuwingen voor vervaldatums:
+  - 🟢 **Groen**: Meer dan 30 dagen geldig
+  - 🟠 **Oranje**: 7-30 dagen tot verval (waarschuwing)
+  - 🔴 **Rood**: Minder dan 7 dagen tot verval (kritiek) of geen toegang
+- **Gedetailleerde informatie**:
+  - Customer naam
+  - Status bericht
+  - Dagen tot verval
+  - Exacte vervaldatum (DD-MM-YYYY)
+- **Filterbare tabel**: Zoeken en sorteren op alle kolommen via DataTables
+- **Export functionaliteit**: Mogelijkheid tot CSV export van de status gegevens
+
+### Toegangsvereisten
+
+Voor volledige functionaliteit moet elke App Registration de `Application.Read.All` permissie hebben:
+
+1. Ga naar [Azure Portal - App registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps)
+2. Selecteer je App Registration
+3. Ga naar **API permissions**
+4. Voeg `Application.Read.All` toe (Microsoft Graph Application permission)
+5. Klik op **Grant admin consent**
+
+**Zonder deze permissie** toont het dashboard "Geen geldige client secret gevonden" voor die tenant.
 
 ## Opmerkingen
 
