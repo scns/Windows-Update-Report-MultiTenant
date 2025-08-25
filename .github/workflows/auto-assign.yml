@@ -25,7 +25,7 @@ jobs:
           
       - name: 👤 Auto assign Issue
         if: github.event_name == 'issues'
-        uses: pozil/auto-assign-issue@v1.11.0
+        uses: pozil/auto-assign-issue@v2.2.0
         with:
           assignees: scns
           numOfAssignee: 1
