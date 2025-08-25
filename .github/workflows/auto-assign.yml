@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: 👤 Auto assign PR reviewer and assignee
         if: github.event_name == 'pull_request'
-        uses: hkusu/review-assign-action@v1.3.0
+        uses: hkusu/review-assign-action@v1.4.0
         with:
           assignees: scns
           reviewers: scns
