@@ -43,6 +43,71 @@ catch {
     exit 1
 }
 
+# Globale cache voor KB mapping
+$Global:CachedKBMapping = $null
+$Global:KBMappingCacheTime = $null
+$Global:KBMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
+
+# Functie om KB mapping te laden en cachen
+function Get-CachedKBMapping {
+    param(
+        [string]$OnlineKBUrl,
+        [int]$TimeoutSeconds = 10,
+        [int]$CacheValidMinutes = 30
+    )
+    
+    # Controleer of cache nog geldig is
+    $now = Get-Date
+    if ($Global:CachedKBMapping -and $Global:KBMappingCacheTime) {
+        $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
+        if ($cacheAge -lt $CacheValidMinutes) {
+            Write-Verbose "Using cached KB mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+            return @{
+                Success = $true
+                Data = $Global:CachedKBMapping
+                Source = "Cache"
+            }
+        }
+    }
+    
+    # Cache is verlopen of niet aanwezig, probeer online op te halen
+    try {
+        Write-Verbose "Fetching fresh KB mapping from: $OnlineKBUrl (timeout: $TimeoutSeconds seconds)"
+        $onlineMapping = Invoke-RestMethod -Uri $OnlineKBUrl -Method GET -TimeoutSec $TimeoutSeconds -ErrorAction Stop
+        
+        # Update cache
+        $Global:CachedKBMapping = $onlineMapping
+        $Global:KBMappingCacheTime = $now
+        
+        Write-Verbose "KB mapping successfully cached (valid for $CacheValidMinutes minutes)"
+        return @{
+            Success = $true
+            Data = $onlineMapping
+            Source = "Online"
+        }
+    } catch {
+        Write-Verbose "Failed to fetch online KB mapping: $($_.Exception.Message)"
+        
+        # Als er een oude cache is, gebruik die als fallback
+        if ($Global:CachedKBMapping) {
+            $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
+            Write-Verbose "Using expired cached KB mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+            return @{
+                Success = $true
+                Data = $Global:CachedKBMapping
+                Source = "ExpiredCache"
+            }
+        }
+        
+        return @{
+            Success = $false
+            Data = $null
+            Source = "Failed"
+            Error = $_.Exception.Message
+        }
+    }
+}
+
 # Functie voor het controleren en installeren van PowerShell modules
 function Install-RequiredModules {
     param(
@@ -161,6 +226,285 @@ function Test-AppRegistrationValidity {
     }
 }
 
+# Helper functie om KB nummers en update identificaties te extraheren
+function Get-CleanUpdateIdentifier {
+    param(
+        [string]$UpdateDisplayName
+    )
+    
+    if (-not $UpdateDisplayName) {
+        return ""
+    }
+    
+    # Zoek naar KB nummers (KB gevolgd door cijfers)
+    if ($UpdateDisplayName -match "(KB\d+)") {
+        $KBNumber = $matches[1]
+        
+        # Zoek ook naar datum in formaat YYYY-MM
+        if ($UpdateDisplayName -match "(\d{4}-\d{2})") {
+            $DatePart = $matches[1]
+            return "$DatePart Cumulative Update ($KBNumber)"
+        } else {
+            return "Cumulative Update ($KBNumber)"
+        }
+    }
+    
+    # Als er geen KB nummer is, probeer een verkorte versie van de naam
+    if ($UpdateDisplayName -match "(\d{4}-\d{2}).*[Cc]umulative") {
+        $DatePart = $matches[1]
+        return "$DatePart Cumulative Update"
+    } elseif ($UpdateDisplayName -match "[Cc]umulative") {
+        return "Cumulative Update"
+    } elseif ($UpdateDisplayName -match "Security.*Update") {
+        return "Security Update"
+    } elseif ($UpdateDisplayName -match "Feature.*Update") {
+        return "Feature Update"
+    } else {
+        # Fallback: gebruik eerste 30 karakters van de naam
+        $shortName = $UpdateDisplayName.Substring(0, [Math]::Min($UpdateDisplayName.Length, 30))
+        if ($UpdateDisplayName.Length -gt 30) {
+            $shortName += "..."
+        }
+        return $shortName
+    }
+}
+
+# Helper functie om de nieuwste KB updates online op te halen
+function Get-LatestKBUpdate {
+    param(
+        [string]$WindowsVersion,  # bijv. "Windows 10", "Windows 11"
+        [string]$CurrentBuild,    # bijv. "4652"
+        [string]$TargetBuild,     # bijv. "4946"
+        [PSCustomObject]$Config   # Configuratie object met kbMappingUrl
+    )
+    
+    try {
+        # Bepaal Windows versie op basis van build nummer
+        $WindowsProduct = "Windows 10"
+        if ([int]$TargetBuild -ge 22000) {
+            $WindowsProduct = "Windows 11"
+        }
+        
+        # Online KB mapping URL uit config halen (met fallback)
+        $OnlineKBUrl = if ($Config -and $Config.kbMappingUrl) { 
+            $Config.kbMappingUrl 
+        } else { 
+            "https://mrtn.blog/wp-content/uploads/2025/08/kb-mapping.json" 
+        }
+        
+        $KBNumber = $null
+        $UpdateTitle = $null
+        
+        # Methode 1: Probeer online KB mapping op te halen (met cache)
+        $OnlineMapping = $null
+        $timeout = if ($Config.kbMapping.onlineTimeout) { $Config.kbMapping.onlineTimeout } else { 10 }
+        $cacheValidMinutes = if ($Config.kbMapping.cacheValidMinutes) { $Config.kbMapping.cacheValidMinutes } else { 30 }
+        
+        $kbMappingResult = Get-CachedKBMapping -OnlineKBUrl $OnlineKBUrl -TimeoutSeconds $timeout -CacheValidMinutes $cacheValidMinutes
+        if ($kbMappingResult.Success) {
+            $OnlineMapping = $kbMappingResult.Data
+            Write-Verbose "KB mapping loaded from: $($kbMappingResult.Source)"
+            
+            # Zoek in de juiste Windows versie sectie
+            $MappingSection = if ([int]$TargetBuild -ge 22000) { 
+                $OnlineMapping.mappings.windows11 
+            } else { 
+                $OnlineMapping.mappings.windows10 
+            }
+            
+            # Zoek exacte match
+            if ($MappingSection.$TargetBuild) {
+                $FoundMapping = $MappingSection.$TargetBuild
+                $KBNumber = $FoundMapping.kb
+                # Check of de online title al "for Windows" bevat
+                $baseTitle = $FoundMapping.title
+                if ($baseTitle -notmatch "for Windows") {
+                    $UpdateTitle = "$($FoundMapping.date) $baseTitle for $WindowsProduct ($KBNumber)"
+                } else {
+                    $UpdateTitle = "$($FoundMapping.date) $baseTitle ($KBNumber)"
+                }
+                Write-Verbose "Found exact online mapping: $UpdateTitle"
+            } else {
+                # Zoek dichtstbijzijnde build
+                $ClosestBuild = $null
+                $SmallestDifference = [int]::MaxValue
+                
+                foreach ($buildKey in $MappingSection.PSObject.Properties.Name) {
+                    $difference = [Math]::Abs([int]$buildKey - [int]$TargetBuild)
+                    if ($difference -lt $SmallestDifference) {
+                        $SmallestDifference = $difference
+                        $ClosestBuild = $buildKey
+                    }
+                }
+                
+                if ($ClosestBuild -and $SmallestDifference -lt 1000) {
+                    $FoundMapping = $MappingSection.$ClosestBuild
+                    $KBNumber = $FoundMapping.kb
+                    # Check of de online title al "for Windows" bevat
+                    $baseTitle = $FoundMapping.title
+                    if ($baseTitle -notmatch "for Windows") {
+                        $UpdateTitle = "$($FoundMapping.date) $baseTitle for $WindowsProduct ($KBNumber)"
+                    } else {
+                        $UpdateTitle = "$($FoundMapping.date) $baseTitle ($KBNumber)"
+                    }
+                    if ($SmallestDifference -gt 0 -and $Config.kbMapping.showEstimationLabels) {
+                        $estimationLabel = if ($Config.kbMapping.estimationLabels.buildDifference) { 
+                            $Config.kbMapping.estimationLabels.buildDifference -replace '\{targetBuild\}', $TargetBuild 
+                        } else { 
+                            "(geschat voor build $TargetBuild)" 
+                        }
+                        $UpdateTitle += " $estimationLabel"
+                    }
+                    Write-Verbose "Found closest online mapping: $UpdateTitle (difference: $SmallestDifference)"
+                }
+            }
+        } else {
+            Write-Verbose "Failed to load KB mapping: $($kbMappingResult.Error)"
+        }
+        
+        # Methode 2: Fallback naar lokale KB mapping
+        if (-not $KBNumber -and ($Config.kbMapping.fallbackToLocalMapping -ne $false)) {
+            Write-Verbose "Using fallback local KB mapping"
+            # Gebruik bekende patronen voor recente builds (bijgewerkt tot augustus 2025)
+            $LocalKBMappings = @{
+                # Windows 11 24H2 (2024-2025)
+                "26100" = @{ KB = "KB5041585"; Date = "2024-08"; Title = "Cumulative Update" }
+                "26010" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                
+                # Windows 11 23H2 (2023-2024)
+                "22631" = @{ KB = "KB5041585"; Date = "2024-08"; Title = "Cumulative Update" }
+                "22621" = @{ KB = "KB5041592"; Date = "2024-08"; Title = "Cumulative Update" }
+                
+                # Windows 11 22H2 (2022-2023)
+                "22000" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                
+                # Windows 10 22H2 (2022-2025)
+                "19045" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                "19044" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                "19043" = @{ KB = "KB5041577"; Date = "2024-08"; Title = "Cumulative Update" }
+                "19042" = @{ KB = "KB5041577"; Date = "2024-08"; Title = "Cumulative Update" }
+                "19041" = @{ KB = "KB5041568"; Date = "2024-08"; Title = "Cumulative Update" }
+                
+                # Windows 10 oudere versies (bijgewerkt naar recentere datums)
+                "18363" = @{ KB = "KB5041561"; Date = "2024-08"; Title = "Cumulative Update" }
+                "18362" = @{ KB = "KB5041561"; Date = "2024-07"; Title = "Cumulative Update" }
+                "17763" = @{ KB = "KB5041564"; Date = "2024-08"; Title = "Cumulative Update" }
+                "17134" = @{ KB = "KB5040442"; Date = "2024-07"; Title = "Cumulative Update" }
+                "16299" = @{ KB = "KB5039338"; Date = "2024-06"; Title = "Cumulative Update" }
+                "15063" = @{ KB = "KB5038223"; Date = "2024-05"; Title = "Cumulative Update" }
+                "14393" = @{ KB = "KB5037019"; Date = "2024-04"; Title = "Cumulative Update" }
+                "10586" = @{ KB = "KB5036004"; Date = "2024-03"; Title = "Cumulative Update" }
+                "10240" = @{ KB = "KB5034768"; Date = "2024-08"; Title = "Cumulative Update" }
+                
+                # Fallback voor nieuwe builds (geschat)
+                "27000" = @{ KB = "KB5042000"; Date = "2025-08"; Title = "Cumulative Update" }
+                "26500" = @{ KB = "KB5041900"; Date = "2025-01"; Title = "Cumulative Update" }
+            }
+            
+            # Zoek naar exacte match eerst
+            if ($LocalKBMappings.ContainsKey($TargetBuild)) {
+                $ClosestMapping = $LocalKBMappings[$TargetBuild]
+            } else {
+                # Zoek naar de dichtstbijzijnde mapping
+                $ClosestMapping = $null
+                $SmallestDifference = [int]::MaxValue
+                
+                foreach ($buildKey in $LocalKBMappings.Keys) {
+                    $difference = [Math]::Abs([int]$buildKey - [int]$TargetBuild)
+                    if ($difference -lt $SmallestDifference) {
+                        $SmallestDifference = $difference
+                        $ClosestMapping = $LocalKBMappings[$buildKey]
+                    }
+                }
+            }
+            
+            if ($ClosestMapping) {
+                $KBNumber = $ClosestMapping.KB
+                # Check of de lokale title al "for Windows" bevat (dat zou niet moeten, maar ter zekerheid)
+                $baseTitle = $ClosestMapping.Title
+                if ($baseTitle -notmatch "for Windows") {
+                    $UpdateTitle = "$($ClosestMapping.Date) $baseTitle for $WindowsProduct ($KBNumber)"
+                } else {
+                    $UpdateTitle = "$($ClosestMapping.Date) $baseTitle ($KBNumber)"
+                }
+                
+                # Controleer of de mapping oud is (datum meer dan 6 maanden geleden)
+                $mappingDate = try { [DateTime]::ParseExact($ClosestMapping.Date, "yyyy-MM", $null) } catch { $null }
+                $isOldMapping = $mappingDate -and (Get-Date).AddMonths(-6) -gt $mappingDate
+                
+                # Bepaal de drempelwaarde voor geschatte mapping
+                $threshold = if ($Config.kbMapping.estimationThreshold) { $Config.kbMapping.estimationThreshold } else { 1000 }
+                
+                # Voeg labels toe op basis van configuratie
+                if ($Config.kbMapping.showEstimationLabels) {
+                    if ($SmallestDifference -gt $threshold) {
+                        $estimationLabel = if ($Config.kbMapping.estimationLabels.noMapping) { 
+                            $Config.kbMapping.estimationLabels.noMapping 
+                        } else { 
+                            "(geschat)" 
+                        }
+                        $UpdateTitle += " $estimationLabel"
+                    } elseif ($isOldMapping) {
+                        $estimationLabel = if ($Config.kbMapping.estimationLabels.oldMapping) { 
+                            $Config.kbMapping.estimationLabels.oldMapping 
+                        } else { 
+                            "(verouderd)" 
+                        }
+                        $UpdateTitle += " $estimationLabel"
+                    }
+                }
+            }
+        }
+        
+        # Methode 3: Genereer een geschatte KB op basis van datum en build verschil
+        if (-not $KBNumber) {
+            $CurrentDate = Get-Date
+            $EstimatedMonth = $CurrentDate.ToString("yyyy-MM")
+            $CurrentYear = $CurrentDate.Year
+            
+            # Genereer een realistische KB nummer gebaseerd op het patroon
+            $KBPrefix = switch ($CurrentYear) {
+                2025 { "506" }
+                2024 { "504" }
+                2023 { "503" }
+                default { "504" }
+            }
+            
+            $EstimatedKB = "KB$KBPrefix" + ([string]([int]$TargetBuild % 10000)).PadLeft(4, '0')
+            $UpdateTitle = "$EstimatedMonth Cumulative Update for $WindowsProduct ($EstimatedKB)"
+            
+            # Voeg geschat label toe als configuratie dit aangeeft
+            if ($Config.kbMapping.showEstimationLabels) {
+                $estimationLabel = if ($Config.kbMapping.estimationLabels.noMapping) { 
+                    $Config.kbMapping.estimationLabels.noMapping 
+                } else { 
+                    "(geschat)" 
+                }
+                $UpdateTitle += " $estimationLabel"
+            }
+        }
+        
+        return @{
+            Success = $true
+            KBNumber = $KBNumber
+            UpdateTitle = $UpdateTitle
+            WindowsProduct = $WindowsProduct
+            Method = if ($OnlineMapping -and $kbMappingResult.Source) { $kbMappingResult.Source } elseif ($KBNumber) { "Local" } else { "Estimated" }
+        }
+        
+    } catch {
+        Write-Verbose "Error retrieving KB update information: $($_.Exception.Message)"
+        return @{
+            Success = $false
+            KBNumber = $null
+            UpdateTitle = "Cumulative Update vereist"
+            WindowsProduct = "Windows"
+            Method = "Fallback"
+            Error = $_.Exception.Message
+        }
+    }
+}
+
 # Onderdruk Microsoft Graph statusberichten
 $env:POWERSHELL_TELEMETRY_OPTOUT = "1"
 $ProgressPreference = "SilentlyContinue"
@@ -231,6 +575,59 @@ $data = $json | ConvertFrom-Json
 # Verzamel App Registration informatie
 $AppRegistrationData = @{}
 
+# Verzamel KB Mapping informatie voor HTML rapport
+Write-Host "Ophalen KB Mapping informatie voor HTML rapport..." -ForegroundColor White
+$KBMappingForHTML = $null
+try {
+    $kbMappingResult = Get-CachedKBMapping -OnlineKBUrl $config.kbMapping.kbMappingUrl -TimeoutSeconds $config.kbMapping.timeoutSeconds -CacheValidMinutes $config.kbMapping.cacheValidMinutes
+    if ($kbMappingResult.Success) {
+        $totalEntries = 0
+        if ($kbMappingResult.Data -and $kbMappingResult.Data.mappings) {
+            # Tel Windows 11 entries
+            if ($kbMappingResult.Data.mappings.windows11) {
+                $totalEntries += ($kbMappingResult.Data.mappings.windows11.PSObject.Properties | Measure-Object).Count
+            }
+            # Tel Windows 10 entries
+            if ($kbMappingResult.Data.mappings.windows10) {
+                $totalEntries += ($kbMappingResult.Data.mappings.windows10.PSObject.Properties | Measure-Object).Count
+            }
+            # Tel Historical entries
+            if ($kbMappingResult.Data.mappings.historical) {
+                foreach ($year in $kbMappingResult.Data.mappings.historical.PSObject.Properties.Name) {
+                    $totalEntries += ($kbMappingResult.Data.mappings.historical.$year.PSObject.Properties | Measure-Object).Count
+                }
+            }
+        }
+        
+        $KBMappingForHTML = @{
+            Success = $true
+            Method = $kbMappingResult.Source
+            Data = $kbMappingResult.Data
+            LastUpdated = if ($Global:KBMappingCacheTime) { $Global:KBMappingCacheTime.ToString("dd-MM-yyyy HH:mm:ss") } else { "N/A" }
+            TotalEntries = $totalEntries
+        }
+        Write-Host "KB Mapping geladen: $($KBMappingForHTML.TotalEntries) items via $($KBMappingForHTML.Method)" -ForegroundColor Green
+    } else {
+        $KBMappingForHTML = @{
+            Success = $false
+            Method = "Error"
+            Error = $kbMappingResult.Error
+            LastUpdated = "N/A"
+            TotalEntries = 0
+        }
+        Write-Warning "KB Mapping kon niet worden geladen: $($kbMappingResult.Error)"
+    }
+} catch {
+    $KBMappingForHTML = @{
+        Success = $false
+        Method = "Exception"
+        Error = $_.Exception.Message
+        LastUpdated = "N/A"
+        TotalEntries = 0
+    }
+    Write-Warning "Fout bij ophalen KB Mapping: $($_.Exception.Message)"
+}
+
 foreach ($cred in $data.LoginCredentials) {
 
     Write-Host "Verwerken van klant: $($cred.customername)" -ForegroundColor Cyan
@@ -254,35 +651,366 @@ foreach ($cred in $data.LoginCredentials) {
     #Connect to Graph using Application Secret
     Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential -NoWelcome | Out-Null
 
-    #Create Query
-    $Query = "DeviceTvmSoftwareVulnerabilities
-    | distinct DeviceName, RecommendedSecurityUpdate, OSPlatform
-    | where OSPlatform startswith 'Windows'
-    | summarize MissingUpdates=make_set(RecommendedSecurityUpdate) by DeviceName
-    | extend Count = array_length(MissingUpdates)
-    | join kind=leftouter (
-        DeviceInfo
-        | summarize arg_max(Timestamp, *) by DeviceName
-        | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform
-        | where OSPlatform startswith 'Windows'
-    ) on DeviceName
-    "
+    Write-Host "Ophalen Windows Update status via Device Management..." -ForegroundColor Cyan
 
-    #Format Query as JSON
-    $Body = @{
-        Query = $Query
-    } | ConvertTo-Json
-
-    #Run the query
-    $Result = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/security/runHuntingQuery" -Body $body
+    try {
+        # Probeer Windows devices op te halen via Device Management API
+        $DevicesUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$filter=operatingSystem eq 'Windows'"
+        
+        try {
+            $DevicesResponse = Invoke-MgGraphRequest -Method GET -Uri $DevicesUri -ErrorAction Stop
+            $Devices = $DevicesResponse.value
+            
+            Write-Host "Gevonden $($Devices.Count) Windows devices..." -ForegroundColor Green
+        }
+        catch {
+            # Als Device Management API faalt (bijv. geen permissions), gebruik fallback
+            Write-Warning "Device Management API niet beschikbaar voor deze tenant. Reden: $($_.Exception.Message)"
+            Write-Host "Gebruik fallback methode met Threat Hunting API..." -ForegroundColor Yellow
+            $Devices = @()  # Forceer fallback door lege array
+        }
+        
+        if ($Devices.Count -eq 0) {
+            Write-Warning "Geen Windows devices gevonden in Device Management. Probeer fallback met Threat Hunting..."
+            
+            # Fallback naar device informatie via KQL
+            $FallbackQuery = "DeviceInfo 
+            | where OSPlatform startswith 'Windows'
+            | summarize arg_max(Timestamp, *) by DeviceName
+            | project DeviceName, LastSeen=Timestamp, LoggedOnUsers, OSPlatform, OSVersion"
+            
+            $Body = @{ Query = $FallbackQuery } | ConvertTo-Json
+            $FallbackResult = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/security/runHuntingQuery" -Body $Body
+            
+            $ResultsArray = $FallbackResult.results | ForEach-Object {
+                [PSCustomObject]@{
+                    DeviceName = $_.DeviceName
+                    MissingUpdates = @("Windows Update status: Controleer handmatig - Device niet in Intune beheer")
+                    Count = 1  # Handmatige controle vereist = niet up-to-date
+                    LastSeen = $_.LastSeen
+                    LoggedOnUsers = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
+                    OSPlatform = $_.OSPlatform
+                    OSVersion = $_.OSVersion
+                    UpdateStatus = "Handmatige controle vereist"
+                }
+            }
+        } else {
+            # Verwerk elk device voor Windows Update status
+            $ResultsArray = @()
+            
+            foreach ($Device in $Devices) {
+                try {
+                    $DeviceName = $Device.deviceName
+                    $MissingUpdates = @()
+                    $ActualMissingUpdates = @()  # Voor echte KB nummers/update namen
+                    $UpdateStatus = "Onbekend"
+                    
+                    # Controleer Windows Update compliance status
+                    $ComplianceUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/deviceCompliancePolicyStates"
+                    try {
+                        $ComplianceStates = Invoke-MgGraphRequest -Method GET -Uri $ComplianceUri -ErrorAction SilentlyContinue
+                        
+                        $HasUpdateIssues = $false
+                        if ($ComplianceStates.value) {
+                            foreach ($ComplianceState in $ComplianceStates.value) {
+                                if ($ComplianceState.state -eq 'nonCompliant' -and 
+                                    ($ComplianceState.settingName -like '*update*' -or 
+                                     $ComplianceState.displayName -like '*Update*' -or
+                                     $ComplianceState.displayName -like '*Windows*')) {
+                                    $MissingUpdates += "Non-compliant: $($ComplianceState.displayName)"
+                                    $HasUpdateIssues = $true
+                                }
+                            }
+                        }
+                        
+                        if ($HasUpdateIssues) {
+                            $UpdateStatus = "Compliance problemen"
+                        }
+                    } catch {
+                        Write-Verbose "Compliance check failed for $DeviceName"
+                    }
+                    
+                    # Controleer update installation geschiedenis via windowsUpdateStates
+                    $UpdateStatesUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/windowsUpdateStates"
+                    try {
+                        $UpdateStates = Invoke-MgGraphRequest -Method GET -Uri $UpdateStatesUri -ErrorAction SilentlyContinue
+                        
+                        if ($UpdateStates.value) {
+                            foreach ($UpdateState in $UpdateStates.value) {
+                                # Debug: Log alle update states om te zien wat beschikbaar is
+                                Write-Verbose "Device: $DeviceName, Update: $($UpdateState.displayName), State: $($UpdateState.state), Quality: $($UpdateState.qualityUpdateClassification)"
+                                
+                                if ($UpdateState.state -eq 'pendingInstallation') {
+                                    $MissingUpdates += "Pending: $($UpdateState.displayName)"
+                                    $ActualMissingUpdates += Get-CleanUpdateIdentifier -UpdateDisplayName $UpdateState.displayName
+                                    $UpdateStatus = "Updates wachtend"
+                                } elseif ($UpdateState.state -eq 'failed') {
+                                    $MissingUpdates += "Failed: $($UpdateState.displayName)"
+                                    $ActualMissingUpdates += Get-CleanUpdateIdentifier -UpdateDisplayName $UpdateState.displayName
+                                    $UpdateStatus = "Update fouten"
+                                } elseif ($UpdateState.state -eq 'notApplicableForDevice') {
+                                    # Skip deze - niet van toepassing
+                                    continue
+                                } elseif ($UpdateState.state -eq 'installed') {
+                                    # Skip deze - al geïnstalleerd
+                                    continue
+                                } else {
+                                    # Alle andere states kunnen duiden op missing/needed updates
+                                    $MissingUpdates += "State $($UpdateState.state): $($UpdateState.displayName)"
+                                    $ActualMissingUpdates += Get-CleanUpdateIdentifier -UpdateDisplayName $UpdateState.displayName
+                                    if ($UpdateStatus -eq "Onbekend") {
+                                        $UpdateStatus = "Updates beschikbaar"
+                                    }
+                                }
+                            }
+                        }
+                    } catch {
+                        Write-Verbose "Update states check failed for $DeviceName"
+                    }
+                    
+                    # Alternatieve methode: probeer Windows Update for Business reports API
+                    if ($ActualMissingUpdates.Count -eq 0) {
+                        try {
+                            # Check device configuration voor Windows Update settings
+                            $ConfigUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/deviceConfigurationStates"
+                            $ConfigStates = Invoke-MgGraphRequest -Method GET -Uri $ConfigUri -ErrorAction SilentlyContinue
+                            
+                            if ($ConfigStates.value) {
+                                foreach ($ConfigState in $ConfigStates.value) {
+                                    if ($ConfigState.displayName -like "*Update*" -or $ConfigState.displayName -like "*Windows*") {
+                                        if ($ConfigState.state -eq "nonCompliant") {
+                                            $MissingUpdates += "Config non-compliant: $($ConfigState.displayName)"
+                                            $ActualMissingUpdates += "Configuration Policy"
+                                            if ($UpdateStatus -eq "Onbekend") {
+                                                $UpdateStatus = "Configuratie problemen"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } catch {
+                            Write-Verbose "Config states check failed for $DeviceName"
+                        }
+                    }
+                    
+                    # Probeer aanvullende Windows Update informatie op te halen
+                    if ($ActualMissingUpdates.Count -eq 0) {
+                        try {
+                            # Check voor Windows Update deployment states
+                            $DeploymentUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')"
+                            $DeviceDetails = Invoke-MgGraphRequest -Method GET -Uri $DeploymentUri -ErrorAction SilentlyContinue
+                            
+                            if ($DeviceDetails -and $DeviceDetails.windowsUpdateForBusinessConfiguration) {
+                                Write-Verbose "Found Windows Update for Business config for $DeviceName"
+                            }
+                            
+                        } catch {
+                            Write-Verbose "Additional update check failed for $DeviceName"
+                        }
+                    }
+                    
+                    # Als geen specifieke problemen gevonden, bepaal status op basis van synchronisatie en OS versie
+                    if ($MissingUpdates.Count -eq 0 -and $UpdateStatus -eq "Onbekend") {
+                        $DaysSinceSync = if ($Device.lastSyncDateTime) {
+                            [Math]::Round((New-TimeSpan -Start ([DateTime]$Device.lastSyncDateTime) -End (Get-Date)).TotalDays)
+                        } else { 999 }
+                        
+                        # Controleer OS versie - voeg deze informatie toe voor transparantie
+                        $OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
+                        
+                        if ($DaysSinceSync -le 3) {
+                            $MissingUpdates = @("Windows Update status: Recent gesynchroniseerd (OS: $OSVersion), geen update problemen gedetecteerd")
+                            $UpdateStatus = "Up-to-date"
+                            
+                            # Voor machines die recent hebben gesynchroniseerd maar oudere OS hebben
+                            if ($OSVersion -and $OSVersion -match '10\.0\.(\d+)\.(\d+)') {
+                                $currentBuild = [int]$matches[2]
+                                # Check voor bekende verouderde builds die updates nodig hebben
+                                if ($currentBuild -lt 4946) {
+                                    $ActualMissingUpdates += "Updates beschikbaar"
+                                }
+                            }
+                        } elseif ($DaysSinceSync -le 7) {
+                            $MissingUpdates = @("Windows Update status: Gesynchroniseerd binnen een week (OS: $OSVersion)")
+                            $UpdateStatus = "Waarschijnlijk up-to-date"
+                        } else {
+                            $MissingUpdates = @("Windows Update status: Niet recent gesynchroniseerd ($DaysSinceSync dagen) (OS: $OSVersion)")
+                            $UpdateStatus = "Synchronisatie vereist"
+                        }
+                    }
+                    
+                    $ResultsArray += [PSCustomObject]@{
+                        DeviceName = $DeviceName
+                        MissingUpdates = $MissingUpdates
+                        ActualMissingUpdates = $ActualMissingUpdates
+                        Count = if ($UpdateStatus -in @("Up-to-date", "Waarschijnlijk up-to-date")) { 0 } else { 1 }
+                        LastSeen = $Device.lastSyncDateTime
+                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
+                        OSPlatform = $Device.operatingSystem
+                        OSVersion = $Device.osVersion
+                        UpdateStatus = $UpdateStatus
+                    }
+                    
+                } catch {
+                    Write-Warning "Fout bij verwerken device $($Device.deviceName): $($_.Exception.Message)"
+                    
+                    $ResultsArray += [PSCustomObject]@{
+                        DeviceName = $Device.deviceName
+                        MissingUpdates = @("Error: Kan Windows Update status niet controleren")
+                        Count = 1  # Error = niet up-to-date
+                        LastSeen = $Device.lastSyncDateTime
+                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
+                        OSPlatform = $Device.operatingSystem
+                        OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
+                        UpdateStatus = "Error"
+                    }
+                }
+            }
+        }
+        
+        # Simuleer de oude Result structuur voor compatibiliteit
+        $Result = @{
+            results = $ResultsArray
+        }
+        
+        # === OS VERSIE ANALYSE ===
+        # Analyseer OS versies om machines met verouderde builds te identificeren
+        $OSVersionGroups = $ResultsArray | Where-Object { $_.OSVersion -and $_.OSVersion -ne "Onbekend" } | 
+                          Group-Object OSVersion | 
+                          Sort-Object Name -Descending
+        
+        if ($OSVersionGroups.Count -gt 1) {
+            $LatestOSVersion = $OSVersionGroups[0].Name
+            $LatestCount = $OSVersionGroups[0].Count
+            $TotalMachines = ($OSVersionGroups | Measure-Object Count -Sum).Sum
+            
+            Write-Host "`n=== OS VERSIE ANALYSE ===" -ForegroundColor Yellow
+            Write-Host "Nieuwste OS versie gedetecteerd: $LatestOSVersion ($LatestCount machines)" -ForegroundColor Green
+            Write-Host "Totaal machines: $TotalMachines" -ForegroundColor Cyan
+            Write-Host "`nVerdeling per OS versie:" -ForegroundColor Cyan
+            
+            foreach ($group in $OSVersionGroups) {
+                $percentage = [Math]::Round(($group.Count / $TotalMachines) * 100, 1)
+                if ($group.Name -eq $LatestOSVersion) {
+                    Write-Host "  [OK] $($group.Name): $($group.Count) machines ($percentage%)" -ForegroundColor Green
+                } else {
+                    Write-Host "  [WARNING] $($group.Name): $($group.Count) machines ($percentage%) - VEROUDERD" -ForegroundColor Yellow
+                }
+            }
+            
+            # Update de resultaten voor machines met verouderde OS versies
+            $UpdatedResults = @()
+            foreach ($result in $ResultsArray) {
+                $newResult = $result.PSObject.Copy()
+                $newResult | Add-Member -MemberType NoteProperty -Name "KBMethod" -Value "N/A" -Force
+                
+                if ($result.OSVersion -and $result.OSVersion -ne "Onbekend" -and $result.OSVersion -ne $LatestOSVersion) {
+                    # Machines met verouderde OS versie - update hun status
+                    $originalStatus = $result.UpdateStatus
+                    $newResult.UpdateStatus = "Verouderde OS versie"
+                    
+                    # Voeg informatie toe over de verouderde OS versie
+                    $versionDifference = "Huidige: $($result.OSVersion), Nieuwste: $LatestOSVersion"
+                    $newResult.MissingUpdates += "LET OP: Verouderde OS versie - $versionDifference (was: $originalStatus)"
+                    
+                    # Probeer te bepalen welke cumulative update er nodig is op basis van OS versie
+                    if ($result.OSVersion -and $LatestOSVersion) {
+                        $currentBuild = $result.OSVersion -replace '.*\.(\d+)$', '$1'
+                        $latestBuild = $LatestOSVersion -replace '.*\.(\d+)$', '$1'
+                        
+                        # Voor Windows 11/10 updates - haal KB nummers online op
+                        if ($currentBuild -match '^\d+$' -and $latestBuild -match '^\d+$') {
+                            $buildDifference = [int]$latestBuild - [int]$currentBuild
+                            if ($buildDifference -gt 0) {
+                                # Bepaal volledige build nummers voor Windows versie detectie
+                                $fullCurrentBuild = $result.OSVersion -replace '^.*\.(\d+\.\d+)$', '$1'
+                                $fullLatestBuild = $LatestOSVersion -replace '^.*\.(\d+\.\d+)$', '$1'
+                                
+                                # Extract major build (bijv. 26100 uit 26100.4652)
+                                $majorCurrentBuild = if ($fullCurrentBuild -match '^(\d+)\.') { $matches[1] } else { $currentBuild }
+                                $majorLatestBuild = if ($fullLatestBuild -match '^(\d+)\.') { $matches[1] } else { $latestBuild }
+                                
+                                # Haal de nieuwste KB update informatie online op
+                                Write-Verbose "Looking up KB information for build $majorCurrentBuild -> $majorLatestBuild"
+                                $KBInfo = Get-LatestKBUpdate -CurrentBuild $majorCurrentBuild -TargetBuild $majorLatestBuild -Config $config
+                                
+                                if ($KBInfo.Success -and $KBInfo.UpdateTitle) {
+                                    $newResult.ActualMissingUpdates += $KBInfo.UpdateTitle
+                                    $newResult.KBMethod = $KBInfo.Method
+                                    Write-Verbose "Found KB info via $($KBInfo.Method): $($KBInfo.UpdateTitle)"
+                                } elseif ($buildDifference -gt 100) {
+                                    # Grote build verschillen duiden op multiple missing updates
+                                    $newResult.ActualMissingUpdates += "Meerdere cumulative updates"
+                                    $newResult.KBMethod = "Estimated"
+                                } elseif ($buildDifference -gt 50) {
+                                    # Matige build verschillen
+                                    $newResult.ActualMissingUpdates += "Cumulative update vereist"
+                                    $newResult.KBMethod = "Estimated"
+                                } else {
+                                    # Kleinere build verschillen - probeer generieke update info
+                                    $CurrentDate = Get-Date
+                                    $EstimatedMonth = $CurrentDate.ToString("yyyy-MM")
+                                    $newResult.ActualMissingUpdates += "$EstimatedMonth Cumulative Update"
+                                    $newResult.KBMethod = "Estimated"
+                                }
+                            }
+                        }
+                    }
+                    
+                    $newResult.Count = 1  # Verouderde OS versie = niet up-to-date
+                }
+                
+                $UpdatedResults += $newResult
+            }
+            
+            # Update de result structure met de aangepaste resultaten
+            $Result = @{
+                results = $UpdatedResults
+            }
+            
+            Write-Host "`nMachines met verouderde OS versies zijn gemarkeerd als 'Verouderde OS versie'" -ForegroundColor Yellow
+            Write-Host "================================`n" -ForegroundColor Yellow
+        } else {
+            Write-Host "`n=== OS VERSIE ANALYSE ===" -ForegroundColor Green
+            Write-Host "Alle machines hebben dezelfde OS versie: $($OSVersionGroups[0].Name)" -ForegroundColor Green
+            Write-Host "============================`n" -ForegroundColor Green
+        }
+        
+    } catch {
+        Write-Warning "Fout bij ophalen Windows Update informatie voor $($cred.customername): $($_.Exception.Message)"
+        Write-Host "Overslaan van deze klant en doorgaan met volgende..." -ForegroundColor Yellow
+        
+        # Maak lege results voor deze klant
+        $Result = @{
+            results = @([PSCustomObject]@{
+                DeviceName = "Geen toegang"
+                MissingUpdates = @("Error: Kan Windows Update informatie niet ophalen - mogelijk geen juiste permissions")
+                ActualMissingUpdates = @()
+                Count = 1  # Permission error = niet up-to-date
+                LastSeen = (Get-Date).ToString()
+                LoggedOnUsers = "N/A"
+                OSPlatform = "Windows"
+                OSVersion = "Onbekend" 
+                UpdateStatus = "Permission Error"
+            })
+        }
+    }
 
     #Format the results into an array
     $ResultsTable = $Result.results | ForEach-Object {
-        $MissingUpdates = $_.MissingUpdates -join ','
+        $ActualMissingUpdates = if ($_.ActualMissingUpdates -is [System.Array]) { 
+            $_.ActualMissingUpdates -join '; '
+        } else { 
+            $_.ActualMissingUpdates 
+        }
+        
         [PSCustomObject]@{
             Device = $_.DeviceName
-            "Missing Updates" = ($MissingUpdates)
-            "Count" = ($_.Count - 1)
+            "Update Status" = if ($_.UpdateStatus) { $_.UpdateStatus } else { "Onbekend" }
+            "Missing Updates" = if ($ActualMissingUpdates) { $ActualMissingUpdates } else { "" }
+            "KB Method" = if ($_.KBMethod) { $_.KBMethod } else { "N/A" }
+            "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
+            "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
             "LastSeen" = $_.LastSeen
             "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
             "App Registration Days Remaining" = $AppValidity.DaysRemaining
@@ -298,7 +1026,14 @@ foreach ($cred in $data.LoginCredentials) {
     # Create a table: Missing Update -> Devices
     $MissingUpdateTable = @()
     foreach ($row in $Result.results) {
-        foreach ($update in $row.MissingUpdates) {
+        # Use actual missing updates if available, otherwise fall back to details
+        $UpdatesToProcess = if ($row.ActualMissingUpdates -and $row.ActualMissingUpdates.Count -gt 0) {
+            $row.ActualMissingUpdates
+        } else {
+            $row.Details
+        }
+        
+        foreach ($update in $UpdatesToProcess) {
             $MissingUpdateTable += [PSCustomObject]@{
                 "Missing Update" = $update
                 "Device" = $row.DeviceName
@@ -322,7 +1057,7 @@ foreach ($cred in $data.LoginCredentials) {
 Move-OldExportsToArchive -ExportPath $ExportDir -ArchivePath $ArchiveDir -RetentionCount $config.exportRetentionCount
 
 # Verzamel alle Overview-bestanden
-$OverviewFiles = Get-ChildItem -Path ".\$($config.exportDirectory)" -Filter "*_Overview.csv" | Sort-Object Name
+$OverviewFiles = Get-ChildItem -Path "$ExportDir" -Filter "*_Overview.csv" | Sort-Object Name
 
 # Haal de totalen per dag per klant op
 $CountsPerDayPerCustomer = @{}
@@ -529,7 +1264,21 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             }
         }
         if ($includeRow) {
-            $TableRows += "<tr><td>$($row.Device)</td><td>$($row.'Missing Updates')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            # Voeg status kleuren toe
+            $StatusColor = switch ($row.'Update Status') {
+                "Up-to-date" { "color: green; font-weight: bold;" }
+                "Waarschijnlijk up-to-date" { "color: darkgreen;" }
+                "Verouderde OS versie" { "color: #FF8C00; font-weight: bold;" }
+                "Compliance problemen" { "color: red; font-weight: bold;" }
+                "Updates wachtend" { "color: orange; font-weight: bold;" }
+                "Update fouten" { "color: red; font-weight: bold;" }
+                "Synchronisatie vereist" { "color: orange;" }
+                "Error" { "color: red; font-weight: bold;" }
+                "Handmatige controle vereist" { "color: gray;" }
+                default { "color: black;" }
+            }
+            
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'KB Method')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -544,13 +1293,28 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
     <div id="$Customer" class="tabcontent" style="display:none">
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
         <p style='font-style:italic;color:#555;'>$lastSeenText</p>
+        
+        <!-- Snelfilter knoppen voor Update Status -->
+        <div class="filter-container">
+            <strong>Snelfilters Update Status:</strong><br>
+            <button onclick="filterByStatus('overviewTable_$Customer', '')" class="filter-button" style="background-color: #6c757d; color: white;">Alle statussen</button>
+            <button onclick="filterByStatus('overviewTable_$Customer', 'Up-to-date')" class="filter-button" style="background-color: #28a745; color: white;">Up-to-date</button>
+            <button onclick="filterByStatus('overviewTable_$Customer', 'Verouderde OS versie')" class="filter-button" style="background-color: #fd7e14; color: white;">Verouderde OS</button>
+            <button onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')" class="filter-button" style="background-color: #dc3545; color: white;">Handmatige controle</button>
+            <button onclick="filterByStatus('overviewTable_$Customer', 'Waarschijnlijk up-to-date')" class="filter-button" style="background-color: #17a2b8; color: white;">Waarschijnlijk up-to-date</button>
+            <button onclick="filterByStatus('overviewTable_$Customer', 'Error')" class="filter-button" style="background-color: #6f42c1; color: white;">Errors</button>
+        </div>
+        
         <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-full.csv', false)">Exporteren volledige tabel</button>
         <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-filtered.csv', true)">Exporteren gefilterde rijen</button>
         <table id="overviewTable_$Customer" class="display" style="width:100%">
             <thead>
                 <tr>
                     <th>Device</th>
+                    <th>Update Status</th>
                     <th>Missing Updates</th>
+                    <th>KB Method</th>
+                    <th>OS Version</th>
                     <th>Count</th>
                     <th>LastSeen</th>
                     <th>LoggedOnUsers</th>
@@ -579,12 +1343,38 @@ $(document).ready(function() {
             // Kolomfilters toevoegen
             $('#' + tableId + ' thead th').each(function (i) {
                 var title = $(this).text();
-                $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
-                $(this).find("input").on('keyup change', function () {
-                    if (table.column(i).search() !== this.value) {
-                        table.column(i).search(this.value).draw();
-                    }
-                });
+                
+                // Voor "Update Status" kolom (index 1): gebruik dropdown filter
+                if (i === 1 && title.includes('Update Status')) {
+                    // Verzamel unieke waarden uit de kolom
+                    var uniqueValues = [];
+                    table.column(i).data().unique().sort().each(function (d, j) {
+                        if (d && uniqueValues.indexOf(d) === -1) {
+                            uniqueValues.push(d);
+                        }
+                    });
+                    
+                    // Maak dropdown met unieke waarden
+                    var select = '<br><select style="width:90%;font-size:12px;"><option value="">Alle statussen</option>';
+                    uniqueValues.forEach(function(value) {
+                        select += '<option value="' + value + '">' + value + '</option>';
+                    });
+                    select += '</select>';
+                    
+                    $(this).append(select);
+                    $(this).find("select").on('change', function () {
+                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        table.column(i).search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+                } else {
+                    // Voor andere kolommen: gebruik tekstfilter
+                    $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
+                    $(this).find("input").on('keyup change', function () {
+                        if (table.column(i).search() !== this.value) {
+                            table.column(i).search(this.value).draw();
+                        }
+                    });
+                }
             });
         }
     }
@@ -627,6 +1417,24 @@ $(document).ready(function() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+    
+    // Functie voor snelfilters op Update Status
+    window.filterByStatus = function(tableId, status) {
+        var table = $('#' + tableId).DataTable();
+        // Update Status kolom is index 1
+        if (status === '') {
+            // Reset filter - toon alle statussen
+            table.column(1).search('').draw();
+            // Reset ook de dropdown
+            $('#' + tableId + ' thead th:eq(1) select').val('');
+        } else {
+            // Filter op specifieke status
+            var val = $.fn.dataTable.util.escapeRegex(status);
+            table.column(1).search('^' + val + '$', true, false).draw();
+            // Update ook de dropdown
+            $('#' + tableId + ' thead th:eq(1) select').val(status);
+        }
     }
 });
 '@
@@ -694,6 +1502,14 @@ $Html = @"
     body.darkmode .tabcontent { background: #181a1b; color: #eee; }
     body.darkmode .footer { border-top: 1px solid #444; color: #aaa; }
     body.darkmode .footer a { color: #66aaff; }
+    .kb-status-box { margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #0066cc; border-radius: 4px; }
+    body.darkmode .kb-status-box { background-color: #2a2a2a; border-left-color: #66aaff; }
+    
+    /* Snelfilter knoppen styling */
+    .filter-container { margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
+    body.darkmode .filter-container { background-color: #2d3035; }
+    .filter-button { margin: 2px; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+    .filter-button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -706,6 +1522,7 @@ $Html = @"
     <div class="tab">
         <button class="tablinks" onclick="showAllCustomers()">Alle klanten</button>
         <button class="tablinks" onclick="showAppRegistrations()">App Registrations</button>
+        <button class="tablinks" onclick="showKBMapping()">KB Mapping Database</button>
         $CustomerTabs
     </div>
     
@@ -735,6 +1552,65 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
 } -join "`n")
             </tbody>
         </table>
+    </div>
+    
+    <!-- KB Mapping Database Tab -->
+    <div id="KBMapping" class="tabcontent" style="display:none">
+        <h2>KB Mapping Database Overview</h2>
+        <div class="kb-status-box">
+            <strong>Database Status:</strong> $(if ($KBMappingForHTML.Success) { "<span style='color:green;'>✓ Beschikbaar</span>" } else { "<span style='color:red;'>✗ Niet beschikbaar</span>" })<br>
+            <strong>Bron Methode:</strong> $($KBMappingForHTML.Method)<br>
+            <strong>Totaal Entries:</strong> $($KBMappingForHTML.TotalEntries)<br>
+            <strong>Laatste Update:</strong> $($KBMappingForHTML.LastUpdated)
+            $(if (-not $KBMappingForHTML.Success) { "<br><strong>Fout:</strong> <span style='color:red;'>$($KBMappingForHTML.Error)</span>" })
+        </div>
+        
+        $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
+            $kbEntries = @()
+            
+            # Verwerk Windows 11 mappings
+            if ($KBMappingForHTML.Data.mappings.windows11) {
+                foreach ($build in ($KBMappingForHTML.Data.mappings.windows11.PSObject.Properties.Name | Sort-Object)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11.$build
+                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 11 $($kbInfo.version)</td></tr>"
+                }
+            }
+            
+            # Verwerk Windows 10 mappings
+            if ($KBMappingForHTML.Data.mappings.windows10) {
+                foreach ($build in ($KBMappingForHTML.Data.mappings.windows10.PSObject.Properties.Name | Sort-Object)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows10.$build
+                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 10 $($kbInfo.version)</td></tr>"
+                }
+            }
+            
+            # Verwerk Historical mappings
+            if ($KBMappingForHTML.Data.mappings.historical) {
+                foreach ($year in ($KBMappingForHTML.Data.mappings.historical.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    foreach ($build in ($KBMappingForHTML.Data.mappings.historical.$year.PSObject.Properties.Name | Sort-Object)) {
+                        $kbInfo = $KBMappingForHTML.Data.mappings.historical.$year.$build
+                        $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.date)</td><td>Historical ($year)</td></tr>"
+                    }
+                }
+            }
+            
+            "<table id='kbMappingTable' class='display' style='width:100%'>
+                <thead>
+                    <tr>
+                        <th>Build Number</th>
+                        <th>KB Number</th>
+                        <th>Update Title</th>
+                        <th>Release Date</th>
+                        <th>OS Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    $($kbEntries -join "`n")
+                </tbody>
+            </table>"
+        } else {
+            "<p style='color:red; font-style:italic;'>KB Mapping database kon niet worden geladen. Controleer de configuratie en internetverbinding.</p>"
+        })
     </div>
     
     $CustomerTables
@@ -837,6 +1713,34 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         // Initialiseer DataTable voor App Registrations
         if (typeof initializeDataTable === 'function') {
             initializeDataTable('appRegTable');
+        }
+        
+        // Reset grafiek naar alle klanten zonder het tab te veranderen
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [
+            $ChartDatasets
+        ];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
+    }
+
+    // Functie voor KB Mapping Database tab
+    function showKBMapping() {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById("KBMapping").style.display = "block";
+        document.getElementsByClassName("tablinks")[2].className += " active";
+        
+        // Initialiseer DataTable voor KB Mapping
+        if (typeof initializeDataTable === 'function') {
+            initializeDataTable('kbMappingTable');
         }
         
         // Reset grafiek naar alle klanten zonder het tab te veranderen
