@@ -43,6 +43,71 @@ catch {
     exit 1
 }
 
+# Globale cache voor KB mapping
+$Global:CachedKBMapping = $null
+$Global:KBMappingCacheTime = $null
+$Global:KBMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
+
+# Functie om KB mapping te laden en cachen
+function Get-CachedKBMapping {
+    param(
+        [string]$OnlineKBUrl,
+        [int]$TimeoutSeconds = 10,
+        [int]$CacheValidMinutes = 30
+    )
+    
+    # Controleer of cache nog geldig is
+    $now = Get-Date
+    if ($Global:CachedKBMapping -and $Global:KBMappingCacheTime) {
+        $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
+        if ($cacheAge -lt $CacheValidMinutes) {
+            Write-Verbose "Using cached KB mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+            return @{
+                Success = $true
+                Data = $Global:CachedKBMapping
+                Source = "Cache"
+            }
+        }
+    }
+    
+    # Cache is verlopen of niet aanwezig, probeer online op te halen
+    try {
+        Write-Verbose "Fetching fresh KB mapping from: $OnlineKBUrl (timeout: $TimeoutSeconds seconds)"
+        $onlineMapping = Invoke-RestMethod -Uri $OnlineKBUrl -Method GET -TimeoutSec $TimeoutSeconds -ErrorAction Stop
+        
+        # Update cache
+        $Global:CachedKBMapping = $onlineMapping
+        $Global:KBMappingCacheTime = $now
+        
+        Write-Verbose "KB mapping successfully cached (valid for $CacheValidMinutes minutes)"
+        return @{
+            Success = $true
+            Data = $onlineMapping
+            Source = "Online"
+        }
+    } catch {
+        Write-Verbose "Failed to fetch online KB mapping: $($_.Exception.Message)"
+        
+        # Als er een oude cache is, gebruik die als fallback
+        if ($Global:CachedKBMapping) {
+            $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
+            Write-Verbose "Using expired cached KB mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+            return @{
+                Success = $true
+                Data = $Global:CachedKBMapping
+                Source = "ExpiredCache"
+            }
+        }
+        
+        return @{
+            Success = $false
+            Data = $null
+            Source = "Failed"
+            Error = $_.Exception.Message
+        }
+    }
+}
+
 # Functie voor het controleren en installeren van PowerShell modules
 function Install-RequiredModules {
     param(
@@ -230,11 +295,15 @@ function Get-LatestKBUpdate {
         $KBNumber = $null
         $UpdateTitle = $null
         
-        # Methode 1: Probeer online KB mapping op te halen
-        try {
-            $timeout = if ($Config.kbMapping.onlineTimeout) { $Config.kbMapping.onlineTimeout } else { 10 }
-            Write-Verbose "Fetching KB mapping from: $OnlineKBUrl (timeout: $timeout seconds)"
-            $OnlineMapping = Invoke-RestMethod -Uri $OnlineKBUrl -Method GET -TimeoutSec $timeout -ErrorAction Stop
+        # Methode 1: Probeer online KB mapping op te halen (met cache)
+        $OnlineMapping = $null
+        $timeout = if ($Config.kbMapping.onlineTimeout) { $Config.kbMapping.onlineTimeout } else { 10 }
+        $cacheValidMinutes = if ($Config.kbMapping.cacheValidMinutes) { $Config.kbMapping.cacheValidMinutes } else { 30 }
+        
+        $kbMappingResult = Get-CachedKBMapping -OnlineKBUrl $OnlineKBUrl -TimeoutSeconds $timeout -CacheValidMinutes $cacheValidMinutes
+        if ($kbMappingResult.Success) {
+            $OnlineMapping = $kbMappingResult.Data
+            Write-Verbose "KB mapping loaded from: $($kbMappingResult.Source)"
             
             # Zoek in de juiste Windows versie sectie
             $MappingSection = if ([int]$TargetBuild -ge 22000) { 
@@ -289,8 +358,8 @@ function Get-LatestKBUpdate {
                     Write-Verbose "Found closest online mapping: $UpdateTitle (difference: $SmallestDifference)"
                 }
             }
-        } catch {
-            Write-Verbose "Failed to fetch online KB mapping: $($_.Exception.Message)"
+        } else {
+            Write-Verbose "Failed to load KB mapping: $($kbMappingResult.Error)"
         }
         
         # Methode 2: Fallback naar lokale KB mapping
@@ -420,7 +489,7 @@ function Get-LatestKBUpdate {
             KBNumber = $KBNumber
             UpdateTitle = $UpdateTitle
             WindowsProduct = $WindowsProduct
-            Method = if ($OnlineMapping) { "Online" } elseif ($KBNumber) { "Local" } else { "Estimated" }
+            Method = if ($OnlineMapping -and $kbMappingResult.Source) { $kbMappingResult.Source } elseif ($KBNumber) { "Local" } else { "Estimated" }
         }
         
     } catch {
@@ -505,6 +574,59 @@ $data = $json | ConvertFrom-Json
 
 # Verzamel App Registration informatie
 $AppRegistrationData = @{}
+
+# Verzamel KB Mapping informatie voor HTML rapport
+Write-Host "Ophalen KB Mapping informatie voor HTML rapport..." -ForegroundColor White
+$KBMappingForHTML = $null
+try {
+    $kbMappingResult = Get-CachedKBMapping -OnlineKBUrl $config.kbMapping.kbMappingUrl -TimeoutSeconds $config.kbMapping.timeoutSeconds -CacheValidMinutes $config.kbMapping.cacheValidMinutes
+    if ($kbMappingResult.Success) {
+        $totalEntries = 0
+        if ($kbMappingResult.Data -and $kbMappingResult.Data.mappings) {
+            # Tel Windows 11 entries
+            if ($kbMappingResult.Data.mappings.windows11) {
+                $totalEntries += ($kbMappingResult.Data.mappings.windows11.PSObject.Properties | Measure-Object).Count
+            }
+            # Tel Windows 10 entries
+            if ($kbMappingResult.Data.mappings.windows10) {
+                $totalEntries += ($kbMappingResult.Data.mappings.windows10.PSObject.Properties | Measure-Object).Count
+            }
+            # Tel Historical entries
+            if ($kbMappingResult.Data.mappings.historical) {
+                foreach ($year in $kbMappingResult.Data.mappings.historical.PSObject.Properties.Name) {
+                    $totalEntries += ($kbMappingResult.Data.mappings.historical.$year.PSObject.Properties | Measure-Object).Count
+                }
+            }
+        }
+        
+        $KBMappingForHTML = @{
+            Success = $true
+            Method = $kbMappingResult.Source
+            Data = $kbMappingResult.Data
+            LastUpdated = if ($Global:KBMappingCacheTime) { $Global:KBMappingCacheTime.ToString("dd-MM-yyyy HH:mm:ss") } else { "N/A" }
+            TotalEntries = $totalEntries
+        }
+        Write-Host "KB Mapping geladen: $($KBMappingForHTML.TotalEntries) items via $($KBMappingForHTML.Method)" -ForegroundColor Green
+    } else {
+        $KBMappingForHTML = @{
+            Success = $false
+            Method = "Error"
+            Error = $kbMappingResult.Error
+            LastUpdated = "N/A"
+            TotalEntries = 0
+        }
+        Write-Warning "KB Mapping kon niet worden geladen: $($kbMappingResult.Error)"
+    }
+} catch {
+    $KBMappingForHTML = @{
+        Success = $false
+        Method = "Exception"
+        Error = $_.Exception.Message
+        LastUpdated = "N/A"
+        TotalEntries = 0
+    }
+    Write-Warning "Fout bij ophalen KB Mapping: $($_.Exception.Message)"
+}
 
 foreach ($cred in $data.LoginCredentials) {
 
@@ -780,6 +902,7 @@ foreach ($cred in $data.LoginCredentials) {
             $UpdatedResults = @()
             foreach ($result in $ResultsArray) {
                 $newResult = $result.PSObject.Copy()
+                $newResult | Add-Member -MemberType NoteProperty -Name "KBMethod" -Value "N/A" -Force
                 
                 if ($result.OSVersion -and $result.OSVersion -ne "Onbekend" -and $result.OSVersion -ne $LatestOSVersion) {
                     # Machines met verouderde OS versie - update hun status
@@ -813,18 +936,22 @@ foreach ($cred in $data.LoginCredentials) {
                                 
                                 if ($KBInfo.Success -and $KBInfo.UpdateTitle) {
                                     $newResult.ActualMissingUpdates += $KBInfo.UpdateTitle
+                                    $newResult.KBMethod = $KBInfo.Method
                                     Write-Verbose "Found KB info via $($KBInfo.Method): $($KBInfo.UpdateTitle)"
                                 } elseif ($buildDifference -gt 100) {
                                     # Grote build verschillen duiden op multiple missing updates
                                     $newResult.ActualMissingUpdates += "Meerdere cumulative updates"
+                                    $newResult.KBMethod = "Estimated"
                                 } elseif ($buildDifference -gt 50) {
                                     # Matige build verschillen
                                     $newResult.ActualMissingUpdates += "Cumulative update vereist"
+                                    $newResult.KBMethod = "Estimated"
                                 } else {
                                     # Kleinere build verschillen - probeer generieke update info
                                     $CurrentDate = Get-Date
                                     $EstimatedMonth = $CurrentDate.ToString("yyyy-MM")
                                     $newResult.ActualMissingUpdates += "$EstimatedMonth Cumulative Update"
+                                    $newResult.KBMethod = "Estimated"
                                 }
                             }
                         }
@@ -871,12 +998,6 @@ foreach ($cred in $data.LoginCredentials) {
 
     #Format the results into an array
     $ResultsTable = $Result.results | ForEach-Object {
-        $MissingUpdates = if ($_.MissingUpdates -is [System.Array]) { 
-            $_.MissingUpdates -join ','
-        } else { 
-            $_.MissingUpdates 
-        }
-        
         $ActualMissingUpdates = if ($_.ActualMissingUpdates -is [System.Array]) { 
             $_.ActualMissingUpdates -join '; '
         } else { 
@@ -887,7 +1008,7 @@ foreach ($cred in $data.LoginCredentials) {
             Device = $_.DeviceName
             "Update Status" = if ($_.UpdateStatus) { $_.UpdateStatus } else { "Onbekend" }
             "Missing Updates" = if ($ActualMissingUpdates) { $ActualMissingUpdates } else { "" }
-            "Details" = $MissingUpdates
+            "KB Method" = if ($_.KBMethod) { $_.KBMethod } else { "N/A" }
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
             "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
             "LastSeen" = $_.LastSeen
@@ -1157,7 +1278,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 default { "color: black;" }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'KB Method')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -1192,6 +1313,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>Device</th>
                     <th>Update Status</th>
                     <th>Missing Updates</th>
+                    <th>KB Method</th>
                     <th>OS Version</th>
                     <th>Count</th>
                     <th>LastSeen</th>
@@ -1380,6 +1502,8 @@ $Html = @"
     body.darkmode .tabcontent { background: #181a1b; color: #eee; }
     body.darkmode .footer { border-top: 1px solid #444; color: #aaa; }
     body.darkmode .footer a { color: #66aaff; }
+    .kb-status-box { margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #0066cc; border-radius: 4px; }
+    body.darkmode .kb-status-box { background-color: #2a2a2a; border-left-color: #66aaff; }
     
     /* Snelfilter knoppen styling */
     .filter-container { margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
@@ -1398,6 +1522,7 @@ $Html = @"
     <div class="tab">
         <button class="tablinks" onclick="showAllCustomers()">Alle klanten</button>
         <button class="tablinks" onclick="showAppRegistrations()">App Registrations</button>
+        <button class="tablinks" onclick="showKBMapping()">KB Mapping Database</button>
         $CustomerTabs
     </div>
     
@@ -1427,6 +1552,65 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
 } -join "`n")
             </tbody>
         </table>
+    </div>
+    
+    <!-- KB Mapping Database Tab -->
+    <div id="KBMapping" class="tabcontent" style="display:none">
+        <h2>KB Mapping Database Overview</h2>
+        <div class="kb-status-box">
+            <strong>Database Status:</strong> $(if ($KBMappingForHTML.Success) { "<span style='color:green;'>✓ Beschikbaar</span>" } else { "<span style='color:red;'>✗ Niet beschikbaar</span>" })<br>
+            <strong>Bron Methode:</strong> $($KBMappingForHTML.Method)<br>
+            <strong>Totaal Entries:</strong> $($KBMappingForHTML.TotalEntries)<br>
+            <strong>Laatste Update:</strong> $($KBMappingForHTML.LastUpdated)
+            $(if (-not $KBMappingForHTML.Success) { "<br><strong>Fout:</strong> <span style='color:red;'>$($KBMappingForHTML.Error)</span>" })
+        </div>
+        
+        $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
+            $kbEntries = @()
+            
+            # Verwerk Windows 11 mappings
+            if ($KBMappingForHTML.Data.mappings.windows11) {
+                foreach ($build in ($KBMappingForHTML.Data.mappings.windows11.PSObject.Properties.Name | Sort-Object)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11.$build
+                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 11 $($kbInfo.version)</td></tr>"
+                }
+            }
+            
+            # Verwerk Windows 10 mappings
+            if ($KBMappingForHTML.Data.mappings.windows10) {
+                foreach ($build in ($KBMappingForHTML.Data.mappings.windows10.PSObject.Properties.Name | Sort-Object)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows10.$build
+                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 10 $($kbInfo.version)</td></tr>"
+                }
+            }
+            
+            # Verwerk Historical mappings
+            if ($KBMappingForHTML.Data.mappings.historical) {
+                foreach ($year in ($KBMappingForHTML.Data.mappings.historical.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    foreach ($build in ($KBMappingForHTML.Data.mappings.historical.$year.PSObject.Properties.Name | Sort-Object)) {
+                        $kbInfo = $KBMappingForHTML.Data.mappings.historical.$year.$build
+                        $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.date)</td><td>Historical ($year)</td></tr>"
+                    }
+                }
+            }
+            
+            "<table id='kbMappingTable' class='display' style='width:100%'>
+                <thead>
+                    <tr>
+                        <th>Build Number</th>
+                        <th>KB Number</th>
+                        <th>Update Title</th>
+                        <th>Release Date</th>
+                        <th>OS Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    $($kbEntries -join "`n")
+                </tbody>
+            </table>"
+        } else {
+            "<p style='color:red; font-style:italic;'>KB Mapping database kon niet worden geladen. Controleer de configuratie en internetverbinding.</p>"
+        })
     </div>
     
     $CustomerTables
@@ -1529,6 +1713,34 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         // Initialiseer DataTable voor App Registrations
         if (typeof initializeDataTable === 'function') {
             initializeDataTable('appRegTable');
+        }
+        
+        // Reset grafiek naar alle klanten zonder het tab te veranderen
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [
+            $ChartDatasets
+        ];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
+    }
+
+    // Functie voor KB Mapping Database tab
+    function showKBMapping() {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById("KBMapping").style.display = "block";
+        document.getElementsByClassName("tablinks")[2].className += " active";
+        
+        // Initialiseer DataTable voor KB Mapping
+        if (typeof initializeDataTable === 'function') {
+            initializeDataTable('kbMappingTable');
         }
         
         // Reset grafiek naar alle klanten zonder het tab te veranderen
