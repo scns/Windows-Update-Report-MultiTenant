@@ -5,7 +5,19 @@
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
     "lastSeenDaysFilter": 0,
-    "kbMappingUrl": "https://mrtn.blog/wp-content/uploads/2025/08/kb-mapping.json",
+    "kbMapping": {
+        "kbMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
+        "timeoutSeconds": 10,
+        "cacheValidMinutes": 30,
+        "estimationThreshold": 1000,
+        "showEstimationLabels": true,
+        "fallbackToLocalMapping": true,
+        "estimationLabels": {
+            "buildDifference": "(geschat voor build {targetBuild})",
+            "noMapping": "(geschat)",
+            "oldMapping": "(verouderd)"
+        }
+    },
     "backup": {
         "enableExportBackup": true,
         "enableArchiveBackup": true,
@@ -20,5 +32,5 @@
     },
     "theme": {
         "default": "dark"
-}
+    }
 }

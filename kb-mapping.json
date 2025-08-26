@@ -2,7 +2,7 @@
   "lastUpdated": "2025-08-26",
   "version": "1.0",
   "description": "Windows KB Update Mapping voor Build Numbers",
-  "source": "https://mrtn.blog/2025-08-26/kb-mapping.json",
+  "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
   "mappings": {
     "windows11": {
       "26100": {
