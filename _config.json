@@ -5,6 +5,19 @@
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
     "lastSeenDaysFilter": 0,
+    "kbMapping": {
+        "kbMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
+        "timeoutSeconds": 10,
+        "cacheValidMinutes": 30,
+        "estimationThreshold": 1000,
+        "showEstimationLabels": true,
+        "fallbackToLocalMapping": true,
+        "estimationLabels": {
+            "buildDifference": "(geschat voor build {targetBuild})",
+            "noMapping": "(geschat)",
+            "oldMapping": "(verouderd)"
+        }
+    },
     "backup": {
         "enableExportBackup": true,
         "enableArchiveBackup": true,
@@ -19,5 +32,5 @@
     },
     "theme": {
         "default": "dark"
-}
+    }
 }

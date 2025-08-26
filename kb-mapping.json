@@ -1,0 +1,221 @@
+{
+  "lastUpdated": "2025-08-26",
+  "version": "1.0",
+  "description": "Windows KB Update Mapping voor Build Numbers",
+  "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
+  "mappings": {
+    "windows11": {
+      "26100": {
+        "kb": "KB5041585",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 11",
+        "version": "24H2",
+        "releaseDate": "2024-08-13"
+      },
+      "26010": {
+        "kb": "KB5041580",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 11",
+        "version": "24H2",
+        "releaseDate": "2024-08-13"
+      },
+      "22631": {
+        "kb": "KB5041585",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 11",
+        "version": "23H2",
+        "releaseDate": "2024-08-13"
+      },
+      "22621": {
+        "kb": "KB5041592",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 11",
+        "version": "22H2",
+        "releaseDate": "2024-08-13"
+      },
+      "22000": {
+        "kb": "KB5041580",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 11",
+        "version": "21H2",
+        "releaseDate": "2024-08-13"
+      }
+    },
+    "windows10": {
+      "19045": {
+        "kb": "KB5041580",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "22H2",
+        "releaseDate": "2024-08-13"
+      },
+      "19044": {
+        "kb": "KB5041580",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "21H2",
+        "releaseDate": "2024-08-13"
+      },
+      "19043": {
+        "kb": "KB5041577",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "21H1",
+        "releaseDate": "2024-08-13"
+      },
+      "19042": {
+        "kb": "KB5041577",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "20H2",
+        "releaseDate": "2024-08-13"
+      },
+      "19041": {
+        "kb": "KB5041568",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "2004",
+        "releaseDate": "2024-08-13"
+      },
+      "18363": {
+        "kb": "KB5041561",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1909",
+        "releaseDate": "2024-08-13"
+      },
+      "18362": {
+        "kb": "KB5041561",
+        "date": "2024-07",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1903",
+        "releaseDate": "2024-07-09"
+      },
+      "17763": {
+        "kb": "KB5041564",
+        "date": "2024-08",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1809",
+        "releaseDate": "2024-08-13"
+      },
+      "17134": {
+        "kb": "KB5040442",
+        "date": "2024-07",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1803",
+        "releaseDate": "2024-07-09"
+      },
+      "16299": {
+        "kb": "KB5039338",
+        "date": "2024-06",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1709",
+        "releaseDate": "2024-06-11"
+      },
+      "15063": {
+        "kb": "KB5038223",
+        "date": "2024-05",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1703",
+        "releaseDate": "2024-05-14"
+      },
+      "14393": {
+        "kb": "KB5037019",
+        "date": "2024-04",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1607",
+        "releaseDate": "2024-04-09"
+      },
+      "10586": {
+        "kb": "KB5036004",
+        "date": "2024-03",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1511",
+        "releaseDate": "2024-03-12"
+      },
+      "10240": {
+        "kb": "KB5034768",
+        "date": "2024-01",
+        "title": "Cumulative Update for Windows 10",
+        "version": "1507",
+        "releaseDate": "2024-01-09"
+      }
+    },
+    "historical": {
+      "2023": {
+        "19045": {
+          "kb": "KB5033375",
+          "date": "2023-12",
+          "title": "Cumulative Update for Windows 10"
+        },
+        "22621": {
+          "kb": "KB5033369",
+          "date": "2023-12",
+          "title": "Cumulative Update for Windows 11"
+        }
+      },
+      "2022": {
+        "19045": {
+          "kb": "KB5021233",
+          "date": "2022-12",
+          "title": "Cumulative Update for Windows 10"
+        },
+        "22000": {
+          "kb": "KB5021234",
+          "date": "2022-12",
+          "title": "Cumulative Update for Windows 11"
+        }
+      },
+      "2021": {
+        "19043": {
+          "kb": "KB5008212",
+          "date": "2021-12",
+          "title": "Cumulative Update for Windows 10"
+        },
+        "22000": {
+          "kb": "KB5008215",
+          "date": "2021-12",
+          "title": "Cumulative Update for Windows 11"
+        }
+      },
+      "2020": {
+        "19041": {
+          "kb": "KB4594440",
+          "date": "2020-12",
+          "title": "Cumulative Update for Windows 10"
+        },
+        "18363": {
+          "kb": "KB4594443",
+          "date": "2020-12",
+          "title": "Cumulative Update for Windows 10"
+        }
+      }
+    }
+  },
+  "patterns": {
+    "kb_generation": {
+      "2025": "KB506xxxx",
+      "2024": "KB504xxxx",
+      "2023": "KB503xxxx",
+      "2022": "KB502xxxx",
+      "2021": "KB500xxxx",
+      "2020": "KB459xxxx"
+    },
+    "build_ranges": {
+      "windows11": {
+        "min": 22000,
+        "max": 30000
+      },
+      "windows10": {
+        "min": 10240,
+        "max": 21999
+      }
+    }
+  },
+  "metadata": {
+    "update_frequency": "monthly",
+    "next_update": "2025-09-26",
+    "contact": "info@maarten-schmeitz.nl",
+    "source_project": "Windows-Update-Report-MultiTenant"
+  }
+}
