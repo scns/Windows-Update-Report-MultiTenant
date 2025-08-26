@@ -7,20 +7,55 @@
 
 ![Dashboard voorbeeld](images/001.png)
 
-Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-updates per device voor meerdere tenants via Microsoft Graph. Het resultaat is een dynamisch HTML-dashboard met filterbare tabellen en grafieken.
+Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update status per device voor meerdere tenants via Microsoft Graph. Het resultaat is een dynamisch HTML-dashboard met filterbare tabellen, grafieken en gedetailleerde KB informatie.
 
-## Functionaliteit
+## Hoofdfunctionaliteit
 
 - **Automatische module installatie**: Controleert en installeert automatisch benodigde PowerShell modules
 - **Configureerbare instellingen**: Alle instellingen beheerbaar via `config.json`
-- **Multi-tenant ondersteuning**: Haalt per tenant de ontbrekende Windows-updates op via Microsoft Graph Threat Hunting API
+- **Multi-tenant ondersteuning**: Haalt per tenant Windows Update status op via Microsoft Graph Device Management API met Threat Hunting API fallback
+- **Intelligente KB detectie**: Toont specifieke ontbrekende KB nummers en security patches
+- **OS versie analyse**: Automatische detectie van verouderde Windows builds en aanbevelingen
 - **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant
-- **Interactief HTML-dashboard**: Genereert een dashboard met filterbare tabellen (DataTables) en grafieken (Chart.js)
+- **Interactief HTML-dashboard**: Genereert dashboard met filterbare tabellen, snelfilters en grafieken
 - **App Registration status monitoring**: Dedicated tabblad voor overzicht van client secret vervaldatums per tenant
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
-- **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport in de standaard webbrowser
-- **App Registration monitoring**: Controleert automatisch de geldigheid van client secrets en waarschuwt voor vervaldatums
-- **Automatische back-up**: Maakt automatisch back-ups van exports, archief en configuratiebestanden
+- **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport
+
+## Nieuwe Functionaliteiten v3.0
+
+### 🎯 **Intelligente Update Detectie**
+
+- **Specifieke KB nummers**: Toont ontbrekende KB updates zoals "KB5041585" voor machines met verouderde OS
+- **Build analyse**: Analyseert OS versie verschillen en suggereert benodigde cumulative updates
+- **Update status categorieën**:
+  - "Up-to-date", "Verouderde OS versie", "Handmatige controle vereist"
+  - "Waarschijnlijk up-to-date", "Updates wachtend", "Update fouten"
+
+### 🔍 **Geavanceerde Filtering**
+
+- **Dropdown filters**: Update Status kolom heeft dropdown met alle beschikbare statussen
+- **Snelfilter knoppen**: Kleurgecodeerde knoppen voor directe filtering op:
+  - 🟢 Up-to-date
+  - 🟠 Verouderde OS versie  
+  - 🔴 Handmatige controle vereist
+  - 🔵 Waarschijnlijk up-to-date
+  - 🟣 Errors
+- **Gesynchroniseerde filtering**: Dropdown en snelfilters werken samen
+
+### 📊 **Uitgebreide Rapportage**
+
+- **Missing Updates kolom**: Toont specifieke ontbrekende KB nummers en update namen
+- **Details kolom**: Bevat statusberichten en diagnostische informatie  
+- **Count logica**: Binary indicator (0 = up-to-date, 1 = aandacht vereist)
+- **OS versie trending**: Toont percentage machines op nieuwste vs verouderde builds
+
+### 🔄 **API Intelligentie**
+
+- **Primary**: Device Management API voor gedetailleerde Windows Update informatie
+- **Secondary**: Configuration compliance voor policy violations
+- **Fallback**: Threat Hunting API voor tenants zonder Device Management toegang
+- **Smart detection**: Build analysis voor praktische update suggesties
 
 ## Benodigdheden
 
@@ -37,11 +72,22 @@ Dit PowerShell-project genereert een overzichtsrapport van ontbrekende Windows-u
 3. Na het aanmaken, ga naar **API permissions**.
 4. **Verwijder alle standaard toegevoegde permissies** (zoals `User.Read`).
 5. Voeg de volgende Microsoft Graph **Application** permissies toe:
-    - `SecurityEvents.Read.All` - Voor het lezen van beveiligingsgegevens
-    - `ThreatHunting.Read.All` - Voor het uitvoeren van threat hunting queries
-    - `Application.Read.All` - Voor het controleren van App Registration geldigheid (client secret vervaldatums)
-6. Klik op **Grant admin consent** voor deze permissies.
-7. Ga naar **Certificates & secrets** en maak een nieuwe client secret aan. Noteer deze waarde direct.
+
+#### Voor optimale functionaliteit (aanbevolen)
+
+- `DeviceManagementManagedDevices.Read.All` - Voor gedetailleerde Windows Update informatie
+- `ThreatHunting.Read.All` - Voor fallback functionaliteit
+- `Application.Read.All` - Voor App Registration geldigheid monitoring
+
+#### Minimale vereisten (fallback functionaliteit)
+
+- `ThreatHunting.Read.All` - Voor basis Windows Update informatie
+- `Application.Read.All` - Voor App Registration geldigheid monitoring
+
+1. Klik op **Grant admin consent** voor deze permissies.
+2. Ga naar **Certificates & secrets** en maak een nieuwe client secret aan. Noteer deze waarde direct.
+
+> **💡 Tip**: Met `DeviceManagementManagedDevices.Read.All` krijg je specifieke KB nummers en gedetailleerde update informatie. Zonder deze permissie valt het script terug op basis functionaliteit via de Threat Hunting API.
 
 ### 2. Configureer het project
 
@@ -97,7 +143,10 @@ Het `config.json` bestand bevat alle instellingen:
   "exportDirectory": "exports",
   "archiveDirectory": "archive",
   "autoOpenHtmlReport": true,
-  "lastSeenDaysFilter": 0
+  "lastSeenDaysFilter": 0,
+  "theme": {
+    "default": "dark"
+  }
 }
 ```
 
@@ -108,7 +157,8 @@ Het `config.json` bestand bevat alle instellingen:
 - `exportDirectory`: Directory waar nieuwe export bestanden worden opgeslagen
 - `archiveDirectory`: Directory waar oude export bestanden worden gearchiveerd
 - `autoOpenHtmlReport`: Automatisch openen van HTML-rapport in webbrowser (true/false)
-- `lastseenDaysFilter` : Filtert de rapportage (tabel én grafiek) op basis van het aantal dagen sinds een device voor het laatst gezien is.
+- `lastSeenDaysFilter`: Filtert de rapportage op basis van het aantal dagen sinds een device voor het laatst gezien is
+- `theme.default`: Standaard thema voor het dashboard ("dark" of "light")
 
 > 📖 **Gedetailleerde configuratie uitleg**: Voor uitgebreide informatie over elke configuratie optie, zie [CONFIG-UITLEG.md](CONFIG-UITLEG.md)
 
@@ -119,10 +169,10 @@ De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik va
 ## Gebruik
 
 1. **Voor nieuwe installaties**: Hernoem `_credentials.json` naar `credentials.json` en `_config.json` naar `config.json`
-1. **Voor bestaande installaties**: Controleer of je `config.json` alle benodigde opties bevat (vergelijk met `_config.json`)
-1. Vul je tenant gegevens in het `credentials.json` bestand
-1. Pas de instellingen in `config.json` aan naar jouw behoeften
-1. Start het script:
+2. **Voor bestaande installaties**: Controleer of je `config.json` alle benodigde opties bevat (vergelijk met `_config.json`)
+3. Vul je tenant gegevens in het `credentials.json` bestand
+4. Pas de instellingen in `config.json` aan naar jouw behoeften
+5. Start het script:
 
 ```powershell
 .\get-windows-update-report.ps1
@@ -130,14 +180,113 @@ De benodigde modules worden automatisch geïnstalleerd bij het eerste gebruik va
 
 1. Het script zal:
    - Automatisch benodigde modules installeren (indien nodig)
-   - App Registration geldigheid controleren per tenant (client secret vervaldatums)
-   - Data ophalen van alle geconfigureerde tenants
-   - CSV-bestanden genereren per klant (inclusief App Registration status)
+   - App Registration geldigheid controleren per tenant
+   - Windows Update status ophalen via Device Management API (of fallback naar Threat Hunting API)
+   - OS versie analyse uitvoeren en verouderde builds detecteren
+   - Ontbrekende KB nummers identificeren voor machines met verouderde OS
+   - CSV-bestanden genereren per klant met gedetailleerde informatie
    - Oude bestanden archiveren (indien geconfigureerd)
-   - Een HTML-dashboard genereren
+   - Een HTML-dashboard genereren met filterbare tabellen en snelfilters
    - Het rapport automatisch openen in je standaard webbrowser
 
-1. De resultaten vind je in de geconfigureerde export directory, inclusief het HTML-dashboard.
+2. De resultaten vind je in de geconfigureerde export directory, inclusief het interactieve HTML-dashboard.
+
+## HTML Dashboard Functionaliteiten
+
+### 📊 **Overzichtstabellen per Klant**
+
+- **Filterbare DataTables**: Zoeken en sorteren op alle kolommen
+- **Update Status dropdown**: Directe filtering op specifieke statussen
+- **Snelfilter knoppen**: Kleurgecodeerde knoppen voor veelgebruikte filters
+- **Export functionaliteit**: Exporteer volledige of gefilterde resultaten naar CSV
+
+### 🎯 **Kolom Informatie**
+
+| Kolom | Beschrijving |
+|-------|-------------|
+| **Device** | Computer naam |
+| **Update Status** | Overall status (Up-to-date, Verouderde OS versie, etc.) |
+| **Missing Updates** | Specifieke KB nummers en update namen die ontbreken |
+| **Details** | Statusberichten en diagnostische informatie |
+| **OS Version** | Windows build versie |
+| **Count** | Binary indicator (0 = OK, 1 = aandacht vereist) |
+| **LastSeen** | Laatste synchronisatie datum |
+| **LoggedOnUsers** | Huidige gebruikers |
+
+### 🔍 **Filter Functionaliteiten**
+
+```html
+<!-- Snelfilter knoppen -->
+🔘 Alle statussen    🟢 Up-to-date    🟠 Verouderde OS    
+🔴 Handmatige controle    🔵 Waarschijnlijk up-to-date    🟣 Errors
+```
+
+### 📈 **Grafieken en Analyses**
+
+- **Count trend per dag**: Laat zien hoe de Windows Update situatie evolueert
+- **Per klant overzicht**: Vergelijk update status tussen verschillende tenants
+- **OS versie analyse**: Percentage verdeling van Windows builds
+
+### 🌙 **Thema Ondersteuning**
+
+- **Dark/Light mode toggle**: Schakel eenvoudig tussen donker en licht thema
+- **Configureerbare standaard**: Stel je voorkeur in via `config.json`
+- **Gebruiksvriendelijk**: FontAwesome iconen voor consistente weergave
+
+## API Methodologie en Fallback
+
+### 🎯 **Primary Method: Device Management API**
+
+**Vereist**: `DeviceManagementManagedDevices.Read.All` permissie
+
+**Voordelen**:
+
+- Specifieke KB nummers van ontbrekende updates
+- Detailed compliance informatie  
+- Windows Update state tracking
+- Configuration policy violations
+
+**Voorbeeld output**:
+
+```text
+Missing Updates: "2024-08 Cumulative Update voor Windows (KB5041585 of nieuwer)"
+Details: "Windows Update status: Recent gesynchroniseerd, geen problemen"
+```
+
+### 🔄 **Fallback Method: Threat Hunting API**
+
+**Vereist**: `ThreatHunting.Read.All` permissie
+
+**Gebruikt wanneer**:
+
+- Device Management API niet beschikbaar
+- Onvoldoende permissies voor Device Management
+- Tenant heeft geen Intune licenties
+
+**Output**:
+
+```text
+Missing Updates: (leeg - geen specifieke KB info beschikbaar)
+Details: "Windows Update status: Controleer handmatig - Device niet in Intune beheer"
+```
+
+### 🧠 **Intelligente OS Analyse**
+
+**Voor alle scenarios**:
+
+Ongeacht welke API gebruikt wordt, het script analyseert OS versies en:
+
+- Detecteert nieuwste Windows build in de omgeving
+- Identificeert machines met verouderde builds  
+- Suggereert specifieke KB updates voor bekende build verschillen
+- Geeft praktische aanbevelingen voor IT beheerders
+
+**Voorbeeld voor verouderde OS**:
+
+```text
+Missing Updates: "Waarschijnlijk ontbrekende cumulative update (build verschil: 294); 2024-08 Cumulative Update voor Windows (KB5041585 of nieuwer)"
+Update Status: "Verouderde OS versie"
+```
 
 ## Bestandsstructuur
 
@@ -163,25 +312,38 @@ Windows-Update-Report-MultiTenant/
 ├── CONFIG-UITLEG.md
 ├── get-windows-update-report.ps1
 ├── exports/             # Configureerbare export directory
-│   ├── 20250806_KlantA_Windows_Update_report_Overview.csv
-│   ├── 20250806_KlantA_Windows_Update_report_ByUpdate.csv
-│   ├── 20250806_KlantB_Windows_Update_report_Overview.csv
-│   ├── 20250806_KlantB_Windows_Update_report_ByUpdate.csv
+│   ├── 20250822_KlantA_Windows_Update_report_Overview.csv
+│   ├── 20250822_KlantA_Windows_Update_report_ByUpdate.csv
+│   ├── 20250822_KlantB_Windows_Update_report_Overview.csv
+│   ├── 20250822_KlantB_Windows_Update_report_ByUpdate.csv
 │   └── Windows_Update_Overview.html
 └── archive/             # Oude bestanden worden hier gearchiveerd
-    ├── 20250805_KlantA_Windows_Update_report_Overview.csv
+    ├── 20250821_KlantA_Windows_Update_report_Overview.csv
     └── ... (oudere bestanden)
 ```
 
-## Nieuwe functies in v2.0
+## Nieuwe functies in v3.0
 
-- **Automatische module installatie**: Geen handmatige module installatie meer nodig
-- **Configureerbare archivering**: Oude bestanden worden verplaatst naar archief in plaats van verwijderd
-- **Flexibele directory instellingen**: Configureerbare export en archief directories
-- **Automatische browser integratie**: HTML rapport wordt automatisch geopend
-- **App Registration monitoring**: Automatische controle van client secret vervaldatums met kleurgecodeerde waarschuwingen
-- **Verbeterde feedback**: Kleurgecodeerde status berichten tijdens uitvoering
-- **Intelligente bestandsbeheer**: Configureerbaar aantal bestanden dat behouden blijft
+### 🎯 **KB Detection & Update Intelligence**
+
+- **Specifieke KB nummers**: Identificeert ontbrekende updates zoals KB5041585
+- **Build gap analyse**: Analyseert verschil tussen huidige en nieuwste OS builds
+- **Smart suggestions**: Geeft praktische aanbevelingen op basis van build verschillen
+- **Multiple API support**: Device Management API met Threat Hunting fallback
+
+### 🔍 **Geavanceerde Filtering Interface**
+
+- **Update Status dropdown**: Vervang tekstfilter met dropdown voor exacte filtering
+- **Snelfilter knoppen**: Kleurgecodeerde knoppen voor directe access tot veelgebruikte filters
+- **Synchronized filtering**: Dropdown en snelfilters werken samen voor optimale UX
+- **Filter persistence**: Behoud filter instellingen tijdens sessie
+
+### 📊 **Enhanced Data Presentation**
+
+- **Separated columns**: "Missing Updates" voor KB nummers, "Details" voor statusberichten
+- **Improved Count logic**: Binary indicator (0/1) voor duidelijke status indicatie
+- **OS version analysis**: Percentage breakdown van Windows builds in omgeving
+- **Status categorization**: Duidelijke update status categorieën voor betere insights
 
 ## Backup functionaliteit
 
@@ -195,7 +357,7 @@ Het script ondersteunt automatische back-ups van exports, archief en configurati
 
 ### Configuratie opties
 
-In het `config.json` bestand kun je per back-up type instellen of deze actief is en hoeveel back-ups bewaard blijven. Je kunt ook de root en subfolders voor back-ups aanpassen:
+In het `config.json` bestand kun je per back-up type instellen of deze actief is en hoeveel back-ups bewaard blijven:
 
 ```json
 "backup": {
@@ -211,31 +373,6 @@ In het `config.json` bestand kun je per back-up type instellen of deze actief is
     "configBackupSubfolder": "config_backup"
 }
 ```
-
-Back-ups worden opgeslagen in de opgegeven subfolders onder de root. Overtollige back-ups worden automatisch verwijderd.
-
-## Thema (dark/light mode)
-
-Het HTML-dashboard ondersteunt een dark/light modus. Je kunt de standaardmodus instellen via de configuratie:
-
-```json
-"theme": {
-    "default": "dark" // opties: "dark", "light"
-}
-```
-
-- **default**: Kies "dark" voor standaard donkere modus, of "light" voor standaard lichte modus.
-- Je kunt altijd handmatig wisselen via de knop rechtsboven in het dashboard.
-
-## Dark mode toggle
-
-Het HTML-dashboard bevat een dark mode toggle-knop rechtsboven. Hiermee kun je eenvoudig wisselen tussen licht en donker thema. De knop gebruikt FontAwesome iconen (zon/maan) voor een consistente weergave in alle browsers.
-
-- **Werking:** Klik op de knop om te wisselen tussen light en dark mode.
-- **Iconen:** De knop toont automatisch een zon (light mode) of maan (dark mode) icoon.
-- **Compatibiliteit:** Door gebruik van FontAwesome worden de iconen overal correct weergegeven.
-
-Deze functie verbetert de leesbaarheid en gebruikerservaring, vooral bij gebruik in donkere omgevingen.
 
 ## App Registration Status Dashboard
 
@@ -256,27 +393,41 @@ Het HTML-dashboard bevat een speciaal "App Registrations" tabblad dat een overzi
 - **Filterbare tabel**: Zoeken en sorteren op alle kolommen via DataTables
 - **Export functionaliteit**: Mogelijkheid tot CSV export van de status gegevens
 
-### Toegangsvereisten
+## Troubleshooting
 
-Voor volledige functionaliteit moet elke App Registration de `Application.Read.All` permissie hebben:
+### ❌ **"Device Management API niet beschikbaar"**
 
-1. Ga naar [Azure Portal - App registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps)
-2. Selecteer je App Registration
-3. Ga naar **API permissions**
-4. Voeg `Application.Read.All` toe (Microsoft Graph Application permission)
-5. Klik op **Grant admin consent**
+**Oorzaak**: Ontbrekende `DeviceManagementManagedDevices.Read.All` permissie of geen Intune licenties  
+**Oplossing**: Script valt automatisch terug op Threat Hunting API - geen actie vereist
 
-**Zonder deze permissie** toont het dashboard "Geen geldige client secret gevonden" voor die tenant.
+### ❌ **"Geen geldige client secret gevonden"**
+
+**Oorzaak**: Ontbrekende `Application.Read.All` permissie  
+**Oplossing**: Voeg permissie toe in Azure Portal en verleen admin consent
+
+### ❌ **Missing Updates kolom is leeg**
+
+**Oorzaak**: Machines zijn werkelijk up-to-date of gebruiken fallback API  
+**Verwachting**: Dit is normaal - machines met verouderde OS krijgen automatisch KB suggesties
+
+### ✅ **Permissie Verificatie**
+
+Controleer in Azure Portal of je App Registration deze permissies heeft:
+
+- ✅ `DeviceManagementManagedDevices.Read.All` (voor KB nummers)
+- ✅ `ThreatHunting.Read.All` (voor fallback)  
+- ✅ `Application.Read.All` (voor App Registration monitoring)
 
 ## Opmerkingen
 
-- Zorg dat je app registration alleen de genoemde permissies bevat.
-- Het script werkt alleen met tenants waar de app registration en rechten correct zijn ingesteld.
-- Voor meer informatie over App Registrations, zie de [Microsoft Docs](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app).
+- Het script werkt optimaal met Device Management permissies, maar functioneert ook met alleen Threat Hunting permissies
+- KB nummers worden alleen getoond bij Device Management API toegang of bij gedetecteerde verouderde OS versies
+- Voor meer informatie over App Registrations, zie de [Microsoft Docs](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
+- Het script ondersteunt zowel Windows 10 als Windows 11 omgevingen
 
 ---
 
-© 2025 l 15/08/2025 by Maarten Schmeitz
+© 2025 l 22/08/2025 by Maarten Schmeitz
 
 [commits-shield]: https://img.shields.io/github/commit-activity/m/scns/Windows-Update-Report-MultiTenant.svg
 [commits]: https://github.com/scns/Windows-Update-Report-MultiTenant/commits/main

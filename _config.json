@@ -5,6 +5,7 @@
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
     "lastSeenDaysFilter": 0,
+    "kbMappingUrl": "https://mrtn.blog/wp-content/uploads/2025/08/kb-mapping.json",
     "backup": {
         "enableExportBackup": true,
         "enableArchiveBackup": true,
