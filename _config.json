@@ -5,6 +5,7 @@
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
     "lastSeenDaysFilter": 0,
+    "timezoneOffsetHours": 2,
     "kbMapping": {
         "kbMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
         "timeoutSeconds": 10,
