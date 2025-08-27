@@ -1342,15 +1342,15 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             
             # Voeg status kleuren toe
             $StatusColor = switch ($row.'Update Status') {
-                "Up to date" { "color: green; font-weight: bold;" }
-                "Waarschijnlijk up to date" { "color: darkgreen;" }
-                "Verouderde OS versie" { "color: #FF8C00; font-weight: bold;" }
-                "Compliance problemen" { "color: red; font-weight: bold;" }
-                "Updates wachtend" { "color: orange; font-weight: bold;" }
-                "Update fouten" { "color: red; font-weight: bold;" }
-                "Synchronisatie vereist" { "color: orange;" }
-                "Error" { "color: red; font-weight: bold;" }
-                "Handmatige controle vereist" { "color: gray;" }
+                "Up to date" { "color: #28a745; font-weight: bold;" }
+                "Waarschijnlijk up to date" { "color: #28a745;" }
+                "Verouderde OS versie" { "color: #fd7e14; font-weight: bold;" }
+                "Compliance problemen" { "color: #dc3545; font-weight: bold;" }
+                "Updates wachtend" { "color: #ffc107; font-weight: bold;" }
+                "Update fouten" { "color: #dc3545; font-weight: bold;" }
+                "Synchronisatie vereist" { "color: #ffc107;" }
+                "Error" { "color: #dc3545; font-weight: bold;" }
+                "Handmatige controle vereist" { "color: #6f42c1;" }
                 default { "color: black;" }
             }
             
