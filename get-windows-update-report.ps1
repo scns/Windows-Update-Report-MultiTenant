@@ -1247,6 +1247,8 @@ $GlobalStats = @{
     UpToDatePCs = 0
     PendingPCs = 0
     FailedPCs = 0
+    OutdatedPCs = 0
+    ManualPCs = 0
     CompliancePercentage = 0
 }
 
@@ -1282,6 +1284,12 @@ foreach ($Customer in $LatestCsvPerCustomer.Keys) {
                 { $_ -match "fout|Error|problemen" } {
                     $GlobalStats.FailedPCs++
                 }
+                { $_ -eq "Verouderde OS versie" } {
+                    $GlobalStats.OutdatedPCs++
+                }
+                { $_ -eq "Handmatige controle vereist" } {
+                    $GlobalStats.ManualPCs++
+                }
             }
         }
     }
@@ -1305,6 +1313,8 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
         UpToDatePCs = 0
         PendingPCs = 0
         FailedPCs = 0
+        OutdatedPCs = 0
+        ManualPCs = 0
         CompliancePercentage = 0
     }
     
@@ -1337,6 +1347,12 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 }
                 { $_ -match "fout|Error|problemen" } {
                     $CustomerStats.FailedPCs++
+                }
+                { $_ -eq "Verouderde OS versie" } {
+                    $CustomerStats.OutdatedPCs++
+                }
+                { $_ -eq "Handmatige controle vereist" } {
+                    $CustomerStats.ManualPCs++
                 }
             }
             
@@ -1411,16 +1427,16 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <i class="fa-solid fa-check-circle"></i> Up to date ($($CustomerStats.UpToDatePCs))
                 </button>
                 <button class="filter-btn pending" onclick="filterByStatus('overviewTable_$Customer', 'wachtend')">
-                    <i class="fa-solid fa-clock"></i> Updates Wachtend
+                    <i class="fa-solid fa-clock"></i> Updates Wachtend ($($CustomerStats.PendingPCs))
                 </button>
                 <button class="filter-btn failed" onclick="filterByStatus('overviewTable_$Customer', 'fout')">
-                    <i class="fa-solid fa-exclamation-triangle"></i> Update Fouten
+                    <i class="fa-solid fa-exclamation-triangle"></i> Update Fouten ($($CustomerStats.FailedPCs))
                 </button>
                 <button class="filter-btn outdated" onclick="filterByStatus('overviewTable_$Customer', 'Verouderde OS versie')">
-                    <i class="fa-solid fa-desktop"></i> Verouderde OS
+                    <i class="fa-solid fa-desktop"></i> Verouderde OS ($($CustomerStats.OutdatedPCs))
                 </button>
                 <button class="filter-btn manual" onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')">
-                    <i class="fa-solid fa-user-cog"></i> Handmatige Controle
+                    <i class="fa-solid fa-user-cog"></i> Handmatige Controle ($($CustomerStats.ManualPCs))
                 </button>
             </div>
         </div>
