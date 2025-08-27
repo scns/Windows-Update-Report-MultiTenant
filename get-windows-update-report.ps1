@@ -820,7 +820,7 @@ foreach ($cred in $data.LoginCredentials) {
                         
                         if ($DaysSinceSync -le 3) {
                             $MissingUpdates = @("Windows Update status: Recent gesynchroniseerd (OS: $OSVersion), geen update problemen gedetecteerd")
-                            $UpdateStatus = "Up-to-date"
+                            $UpdateStatus = "Up to date"
                             
                             # Voor machines die recent hebben gesynchroniseerd maar oudere OS hebben
                             if ($OSVersion -and $OSVersion -match '10\.0\.(\d+)\.(\d+)') {
@@ -832,7 +832,7 @@ foreach ($cred in $data.LoginCredentials) {
                             }
                         } elseif ($DaysSinceSync -le 7) {
                             $MissingUpdates = @("Windows Update status: Gesynchroniseerd binnen een week (OS: $OSVersion)")
-                            $UpdateStatus = "Waarschijnlijk up-to-date"
+                            $UpdateStatus = "Waarschijnlijk up to date"
                         } else {
                             $MissingUpdates = @("Windows Update status: Niet recent gesynchroniseerd ($DaysSinceSync dagen) (OS: $OSVersion)")
                             $UpdateStatus = "Synchronisatie vereist"
@@ -843,7 +843,7 @@ foreach ($cred in $data.LoginCredentials) {
                         DeviceName = $DeviceName
                         MissingUpdates = $MissingUpdates
                         ActualMissingUpdates = $ActualMissingUpdates
-                        Count = if ($UpdateStatus -in @("Up-to-date", "Waarschijnlijk up-to-date")) { 0 } else { 1 }
+                        Count = if ($UpdateStatus -in @("Up to date", "Waarschijnlijk up to date")) { 0 } else { 1 }
                         LastSeen = $Device.lastSyncDateTime
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
@@ -1241,12 +1241,73 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
 
 $ChartDataJSON = $ChartDataJSON.TrimEnd(',') + "}"
 
+# Bereken globale statistieken voor alle klanten
+$GlobalStats = @{
+    TotalPCs = 0
+    UpToDatePCs = 0
+    PendingPCs = 0
+    FailedPCs = 0
+    CompliancePercentage = 0
+}
+
+foreach ($Customer in $LatestCsvPerCustomer.Keys) {
+    $now = Get-Date
+    $filterDays = [int]$config.lastSeenDaysFilter
+    
+    foreach ($row in $LatestCsvPerCustomer[$Customer]) {
+        $includeRow = $true
+        if ($filterDays -gt 0 -and $row.LastSeen) {
+            $lastSeenDate = $null
+            try {
+                $lastSeenDate = [datetime]::Parse($row.LastSeen)
+            } catch {}
+            if ($lastSeenDate) {
+                $daysAgo = ($now - $lastSeenDate).TotalDays
+                if ($daysAgo -gt $filterDays) {
+                    $includeRow = $false
+                }
+            }
+        }
+        
+        if ($includeRow) {
+            $GlobalStats.TotalPCs++
+            
+            switch ($row.'Update Status') {
+                { $_ -eq "Up to date" -or $_ -eq "Waarschijnlijk up to date" } {
+                    $GlobalStats.UpToDatePCs++
+                }
+                { $_ -match "wachtend|Synchronisatie" } {
+                    $GlobalStats.PendingPCs++
+                }
+                { $_ -match "fout|Error|problemen" } {
+                    $GlobalStats.FailedPCs++
+                }
+            }
+        }
+    }
+}
+
+# Bereken compliance percentage
+if ($GlobalStats.TotalPCs -gt 0) {
+    $GlobalStats.CompliancePercentage = [math]::Round(($GlobalStats.UpToDatePCs / $GlobalStats.TotalPCs) * 100)
+}
+
 # Genereer tabbladen en tabellen voor alleen de laatste datum per klant
 $CustomerTabs = ""
 $CustomerTables = ""
 foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
     $TableRows = ""
     $RowCount = 0
+    
+    # Bereken statistieken per klant
+    $CustomerStats = @{
+        TotalPCs = 0
+        UpToDatePCs = 0
+        PendingPCs = 0
+        FailedPCs = 0
+        CompliancePercentage = 0
+    }
+    
     $now = Get-Date
     $filterDays = [int]$config.lastSeenDaysFilter
     foreach ($row in $LatestCsvPerCustomer[$Customer]) {
@@ -1264,10 +1325,25 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             }
         }
         if ($includeRow) {
+            $CustomerStats.TotalPCs++
+            
+            # Tel statistieken per status
+            switch ($row.'Update Status') {
+                { $_ -eq "Up to date" -or $_ -eq "Waarschijnlijk up to date" } {
+                    $CustomerStats.UpToDatePCs++
+                }
+                { $_ -match "wachtend|Synchronisatie" } {
+                    $CustomerStats.PendingPCs++
+                }
+                { $_ -match "fout|Error|problemen" } {
+                    $CustomerStats.FailedPCs++
+                }
+            }
+            
             # Voeg status kleuren toe
             $StatusColor = switch ($row.'Update Status') {
-                "Up-to-date" { "color: green; font-weight: bold;" }
-                "Waarschijnlijk up-to-date" { "color: darkgreen;" }
+                "Up to date" { "color: green; font-weight: bold;" }
+                "Waarschijnlijk up to date" { "color: darkgreen;" }
                 "Verouderde OS versie" { "color: #FF8C00; font-weight: bold;" }
                 "Compliance problemen" { "color: red; font-weight: bold;" }
                 "Updates wachtend" { "color: orange; font-weight: bold;" }
@@ -1282,6 +1358,12 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             $RowCount++
         }
     }
+    
+    # Bereken compliance percentage voor deze klant
+    if ($CustomerStats.TotalPCs -gt 0) {
+        $CustomerStats.CompliancePercentage = [math]::Round(($CustomerStats.UpToDatePCs / $CustomerStats.TotalPCs) * 100)
+    }
+    
     $CustomerTabs += '<button class="tablinks" onclick="openCustomer(event, ''' + $Customer + ''')">' + $Customer + ' (' + $RowCount + ')</button>'
 
     if ($filterDays -eq 0) {
@@ -1294,15 +1376,53 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
         <h2>Laatste overzicht voor $Customer ($($LatestDatePerCustomer[$Customer]))</h2>
         <p style='font-style:italic;color:#555;'>$lastSeenText</p>
         
-        <!-- Snelfilter knoppen voor Update Status -->
-        <div class="filter-container">
-            <strong>Snelfilters Update Status:</strong><br>
-            <button onclick="filterByStatus('overviewTable_$Customer', '')" class="filter-button" style="background-color: #6c757d; color: white;">Alle statussen</button>
-            <button onclick="filterByStatus('overviewTable_$Customer', 'Up-to-date')" class="filter-button" style="background-color: #28a745; color: white;">Up-to-date</button>
-            <button onclick="filterByStatus('overviewTable_$Customer', 'Verouderde OS versie')" class="filter-button" style="background-color: #fd7e14; color: white;">Verouderde OS</button>
-            <button onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')" class="filter-button" style="background-color: #dc3545; color: white;">Handmatige controle</button>
-            <button onclick="filterByStatus('overviewTable_$Customer', 'Waarschijnlijk up-to-date')" class="filter-button" style="background-color: #17a2b8; color: white;">Waarschijnlijk up-to-date</button>
-            <button onclick="filterByStatus('overviewTable_$Customer', 'Error')" class="filter-button" style="background-color: #6f42c1; color: white;">Errors</button>
+        <!-- Klant-specifieke statistieken -->
+        <div class="global-stats">
+            <div class="stat-card">
+                <h4>Totaal PC's</h4>
+                <div class="stat-number">$($CustomerStats.TotalPCs)</div>
+            </div>
+            <div class="stat-card up-to-date">
+                <h4>Up to Date</h4>
+                <div class="stat-number">$($CustomerStats.UpToDatePCs)</div>
+            </div>
+            <div class="stat-card pending">
+                <h4>Updates Beschikbaar</h4>
+                <div class="stat-number">$($CustomerStats.PendingPCs)</div>
+            </div>
+            <div class="stat-card failed">
+                <h4>Update Fouten</h4>
+                <div class="stat-number">$($CustomerStats.FailedPCs)</div>
+            </div>
+            <div class="stat-card info">
+                <h4>Up to date %</h4>
+                <div class="stat-number">$($CustomerStats.CompliancePercentage)%</div>
+            </div>
+        </div>
+        
+        <!-- Filter knoppen -->
+        <div style="margin: 20px 0; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <h4 style="margin: 0 0 15px 0; color: #495057;"><i class="fa-solid fa-filter"></i> Filter Opties</h4>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterByStatus('overviewTable_$Customer', '')">
+                    <i class="fa-solid fa-list"></i> Alle Statussen ($($CustomerStats.TotalPCs))
+                </button>
+                <button class="filter-btn up-to-date" onclick="filterByStatus('overviewTable_$Customer', 'Up to date')">
+                    <i class="fa-solid fa-check-circle"></i> Up to date ($($CustomerStats.UpToDatePCs))
+                </button>
+                <button class="filter-btn pending" onclick="filterByStatus('overviewTable_$Customer', 'wachtend')">
+                    <i class="fa-solid fa-clock"></i> Updates Wachtend
+                </button>
+                <button class="filter-btn failed" onclick="filterByStatus('overviewTable_$Customer', 'fout')">
+                    <i class="fa-solid fa-exclamation-triangle"></i> Update Fouten
+                </button>
+                <button class="filter-btn outdated" onclick="filterByStatus('overviewTable_$Customer', 'Verouderde OS versie')">
+                    <i class="fa-solid fa-desktop"></i> Verouderde OS
+                </button>
+                <button class="filter-btn manual" onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')">
+                    <i class="fa-solid fa-user-cog"></i> Handmatige Controle
+                </button>
+            </div>
         </div>
         
         <button onclick="exportTableToCSV('overviewTable_$Customer', '$Customer-full.csv', false)">Exporteren volledige tabel</button>
@@ -1422,6 +1542,30 @@ $(document).ready(function() {
     // Functie voor snelfilters op Update Status
     window.filterByStatus = function(tableId, status) {
         var table = $('#' + tableId).DataTable();
+        
+        // Haal de klant naam uit de table ID (bijv. 'overviewTable_CustomerName')
+        var customerName = tableId.replace('overviewTable_', '');
+        
+        // Update filter button states
+        var filterContainer = document.querySelector('#' + customerName + ' .filter-buttons');
+        if (filterContainer) {
+            // Reset alle buttons
+            filterContainer.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Activeer de juiste button
+            var activeBtn = null;
+            if (status === '') {
+                activeBtn = filterContainer.querySelector('.filter-btn[onclick*="\'\'"]');
+            } else {
+                activeBtn = filterContainer.querySelector('.filter-btn[onclick*="' + status + '"]');
+            }
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+        }
+        
         // Update Status kolom is index 1
         if (status === '') {
             // Reset filter - toon alle statussen
@@ -1429,11 +1573,19 @@ $(document).ready(function() {
             // Reset ook de dropdown
             $('#' + tableId + ' thead th:eq(1) select').val('');
         } else {
-            // Filter op specifieke status
-            var val = $.fn.dataTable.util.escapeRegex(status);
-            table.column(1).search('^' + val + '$', true, false).draw();
-            // Update ook de dropdown
-            $('#' + tableId + ' thead th:eq(1) select').val(status);
+            // Filter op specifieke status of gedeeltelijke match
+            var searchTerm = status;
+            if (status === 'wachtend') {
+                searchTerm = 'wachtend|Synchronisatie';
+            } else if (status === 'fout') {
+                searchTerm = 'fout|Error|problemen';
+            }
+            table.column(1).search(searchTerm, true, false).draw();
+            // Update ook de dropdown indien exacte match
+            var exactMatch = table.column(1).data().toArray().find(d => d === status);
+            if (exactMatch) {
+                $('#' + tableId + ' thead th:eq(1) select').val(status);
+            }
         }
     }
 });
@@ -1480,6 +1632,11 @@ $Html = @"
     <style>
     body { font-family: Arial, sans-serif; margin: 40px; background: #fff; color: #222; transition: background 0.2s, color 0.2s; }
     .container { max-width: 1200px; margin: auto; }
+    
+    /* Header styling  */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .header h1 { margin: 0; color: #0066cc; }
+    
     canvas { background: #fff; }
     table.dataTable thead th { background: #eee; }
     .tab { overflow: hidden; border-bottom: 1px solid #ccc; }
@@ -1493,6 +1650,7 @@ $Html = @"
     /* Dark mode styles */
     body.darkmode { background: #181a1b; color: #eee; }
     body.darkmode .container { background: #181a1b; }
+    body.darkmode .header h1 { color: #66aaff; }
     body.darkmode canvas { background: #222; }
     body.darkmode table.dataTable thead th { background: #222; color: #eee; }
     body.darkmode .tab { border-bottom: 1px solid #444; }
@@ -1510,13 +1668,157 @@ $Html = @"
     body.darkmode .filter-container { background-color: #2d3035; }
     .filter-button { margin: 2px; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
     .filter-button:hover { opacity: 0.8; }
+    
+    /* Filter Buttons  */
+    .filter-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+    .filter-btn { 
+        background: white; 
+        border: 2px solid #dee2e6; 
+        padding: 8px 16px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        font-size: 14px; 
+        font-weight: 500;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .filter-btn:hover { 
+        background: #f8f9fa; 
+        border-color: #0066cc; 
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .filter-btn.active { 
+        background: #0066cc; 
+        color: white; 
+        border-color: #0066cc; 
+    }
+    .filter-btn.up-to-date { border-color: #28a745; color: #28a745; }
+    .filter-btn.up-to-date:hover, .filter-btn.up-to-date.active { background: #28a745; color: white; }
+    .filter-btn.pending { border-color: #ffc107; color: #e68900; }
+    .filter-btn.pending:hover, .filter-btn.pending.active { background: #ffc107; color: #212529; }
+    .filter-btn.failed { border-color: #dc3545; color: #dc3545; }
+    .filter-btn.failed:hover, .filter-btn.failed.active { background: #dc3545; color: white; }
+    .filter-btn.outdated { border-color: #fd7e14; color: #fd7e14; }
+    .filter-btn.outdated:hover, .filter-btn.outdated.active { background: #fd7e14; color: white; }
+    .filter-btn.manual { border-color: #6f42c1; color: #6f42c1; }
+    .filter-btn.manual:hover, .filter-btn.manual.active { background: #6f42c1; color: white; }
+    
+    /* Dark mode filter buttons */
+    body.darkmode .filter-btn { background: #1e1e1e; border-color: #333; color: #e0e0e0; }
+    body.darkmode .filter-btn:hover { background: #333; border-color: #4da6ff; }
+    body.darkmode .filter-btn.active { background: #0066cc; color: white; border-color: #0066cc; }
+    body.darkmode .filter-btn.up-to-date { border-color: #4dff4d; color: #4dff4d; }
+    body.darkmode .filter-btn.up-to-date:hover, body.darkmode .filter-btn.up-to-date.active { background: #4dff4d; color: #121212; }
+    body.darkmode .filter-btn.pending { border-color: #ffcc4d; color: #ffcc4d; }
+    body.darkmode .filter-btn.pending:hover, body.darkmode .filter-btn.pending.active { background: #ffcc4d; color: #121212; }
+    body.darkmode .filter-btn.failed { border-color: #ff4d4d; color: #ff4d4d; }
+    body.darkmode .filter-btn.failed:hover, body.darkmode .filter-btn.failed.active { background: #ff4d4d; color: #121212; }
+    body.darkmode .filter-btn.outdated { border-color: #ffaa66; color: #ffaa66; }
+    body.darkmode .filter-btn.outdated:hover, body.darkmode .filter-btn.outdated.active { background: #ffaa66; color: #121212; }
+    body.darkmode .filter-btn.manual { border-color: #b084ff; color: #b084ff; }
+    body.darkmode .filter-btn.manual:hover, body.darkmode .filter-btn.manual.active { background: #b084ff; color: #121212; }
+    
+    /* Dark mode container styling */
+    body.darkmode div[style*="background: #f8f9fa"] { background: #2a2a2a !important; }
+    
+    /* Button Styling */
+    #darkModeToggle { 
+        background: #0066cc; 
+        color: white; 
+        border: none; 
+        padding: 10px 15px; 
+        border-radius: 5px; 
+        cursor: pointer; 
+        font-size: 14px;
+        transition: background 0.3s;
+    }
+    #darkModeToggle:hover { background: #0056b3; }
+    body.darkmode #darkModeToggle { background: #ffc107; color: #000; }
+    body.darkmode #darkModeToggle:hover { background: #e0a800; }
+    
+    /* Statistieken kaarten styling */
+    .global-stats { display: flex; flex-wrap: wrap; gap: 15px; margin: 20px 0; }
+    .stat-card { 
+        background: white; 
+        padding: 20px; 
+        border-radius: 8px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        text-align: center; 
+        border-left: 4px solid #0066cc;
+        flex: 1 1 150px;
+        min-width: 150px;
+    }
+    .stat-card h4 { 
+        margin: 0 0 10px 0; 
+        font-size: 14px; 
+        color: #666; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px; 
+    }
+    .stat-card .stat-number { 
+        font-size: 28px; 
+        font-weight: bold; 
+        color: #333; 
+    }
+    .stat-card.up-to-date { border-left-color: #28a745; }
+    .stat-card.up-to-date .stat-number { color: #28a745; }
+    .stat-card.pending { border-left-color: #ffc107; }
+    .stat-card.pending .stat-number { color: #e68900; }
+    .stat-card.failed { border-left-color: #dc3545; }
+    .stat-card.failed .stat-number { color: #dc3545; }
+    .stat-card.info { border-left-color: #17a2b8; }
+    .stat-card.info .stat-number { color: #17a2b8; }
+    
+    /* Dark mode statistieken styling */
+    body.darkmode .stat-card { 
+        background: #1e1e1e; 
+        color: #e0e0e0; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
+    }
+    body.darkmode .stat-card h4 { color: #b0b0b0; }
+    body.darkmode .stat-card .stat-number { color: #e0e0e0; }
+    body.darkmode .stat-card.up-to-date .stat-number { color: #4dff4d; }
+    body.darkmode .stat-card.pending .stat-number { color: #ffcc4d; }
+    body.darkmode .stat-card.failed .stat-number { color: #ff4d4d; }
+    body.darkmode .stat-card.info .stat-number { color: #4dffff; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Windows Update Overview <button id="darkModeToggle" style="float:right;margin-left:20px;"><i class="fa-solid fa-moon"></i> Dark mode</button></h1>
+    <div class="header">
+        <h1><i class="fa-solid fa-desktop"></i> Windows Update Overview</h1>
+        <button id="darkModeToggle"><i class="fa-solid fa-moon"></i> Dark mode</button>
+    </div>
 
-    <p>Laatst uitgevoerd op: $LastRunDate</p>
+    <p><i class="fa-solid fa-clock"></i> Laatst uitgevoerd op: $LastRunDate</p>
+    
+    <!-- Statistieken sectie -->
+    <div class="global-stats">
+        <div class="stat-card">
+            <h4>Totaal PC's</h4>
+            <div class="stat-number">$($GlobalStats.TotalPCs)</div>
+        </div>
+        <div class="stat-card up-to-date">
+            <h4>Up to Date</h4>
+            <div class="stat-number">$($GlobalStats.UpToDatePCs)</div>
+        </div>
+        <div class="stat-card pending">
+            <h4>Updates Beschikbaar</h4>
+            <div class="stat-number">$($GlobalStats.PendingPCs)</div>
+        </div>
+        <div class="stat-card failed">
+            <h4>Update Fouten</h4>
+            <div class="stat-number">$($GlobalStats.FailedPCs)</div>
+        </div>
+        <div class="stat-card info">
+            <h4>Up to date %</h4>
+            <div class="stat-number">$($GlobalStats.CompliancePercentage)%</div>
+        </div>
+    </div>
+    
     <h2>Totale Count per dag per klant</h2>
     <canvas id="countChart" height="100"></canvas>
     <div class="tab">
