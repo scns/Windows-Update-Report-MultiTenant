@@ -1,0 +1,56 @@
+---
+name: "Stale Management"
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # Run daily at 1 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: 🗂️ Manage stale issues and PRs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🏷️ Mark/Close stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Stale issue settings
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: 'stale'
+          exempt-issue-labels: 'no-stale,priority-critical,priority-high,in-progress'
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had
+            recent activity. It will be closed in 14 days if no further activity occurs.
+            Thank you for your contributions.
+            
+            If you believe this issue is still relevant, please add a comment to keep it open.
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity.
+            If you believe this issue is still relevant, please reopen it with updated information.
+
+          # Stale PR settings  
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'no-stale,priority-critical,priority-high,in-progress'
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had
+            recent activity. It will be closed in 7 days if no further activity occurs.
+            Thank you for your contributions.
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+            If you would like to continue working on this, please reopen it with updated changes.
+
+          # General settings
+          operations-per-run: 30
+          remove-stale-when-updated: true
+          debug-only: false

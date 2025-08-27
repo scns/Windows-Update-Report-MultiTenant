@@ -1,0 +1,129 @@
+# Configuration for content-based auto labeling
+# See: https://github.com/github/issue-labeler
+
+# Bug related keywords
+bugfix:
+  - 'bug'
+  - 'error'
+  - 'issue'
+  - 'problem'
+  - 'not working'
+  - 'broken'
+  - 'fix'
+
+# Enhancement and features
+enhancement:
+  - 'enhancement'
+  - 'improve'
+  - 'better'
+  - 'optimize'
+
+new-feature:
+  - 'feature'
+  - 'new feature'
+  - 'add'
+  - 'implement'
+
+# Documentation
+documentation:
+  - 'documentation'
+  - 'docs'
+  - 'readme'
+  - 'guide'
+  - 'help'
+  - 'tutorial'
+
+# KB specific
+kb-update:
+  - 'kb'
+  - 'knowledge base'
+  - 'mapping'
+  - 'database'
+  - 'kb mapping'
+  - 'kb cache'
+
+# Performance
+performance:
+  - 'performance'
+  - 'slow'
+  - 'fast'
+  - 'optimization'
+  - 'speed'
+  - 'optimize'
+
+# Security
+security:
+  - 'security'
+  - 'vulnerability'
+  - 'cve'
+  - 'exploit'
+  - 'secure'
+
+# Refactoring
+refactor:
+  - 'refactor'
+  - 'cleanup'
+  - 'code quality'
+  - 'restructure'
+
+# Maintenance
+maintenance:
+  - 'maintenance'
+  - 'update'
+  - 'upgrade'
+  - 'housekeeping'
+  - 'chore'
+
+# Dependencies
+dependencies:
+  - 'dependency'
+  - 'dependencies'
+  - 'package'
+  - 'module'
+  - 'library'
+
+# CI related
+ci:
+  - 'ci'
+  - 'workflow'
+  - 'automation'
+  - 'github actions'
+  - 'pipeline'
+
+# Help wanted
+help-wanted:
+  - 'help wanted'
+  - 'help needed'
+  - 'need help'
+  - 'assistance'
+
+# Beginner friendly
+beginner-friendly:
+  - 'good first issue'
+  - 'beginner'
+  - 'easy'
+  - 'starter'
+  - 'newcomer'
+
+# Priority indicators
+priority-critical:
+  - 'critical'
+  - 'urgent'
+  - 'emergency'
+  - 'asap'
+  - 'breaking'
+
+priority-high:
+  - 'important'
+  - 'high priority'
+  - 'serious'
+
+priority-medium:
+  - 'medium priority'
+  - 'moderate'
+
+priority-low:
+  - 'low priority'
+  - 'nice to have'
+  - 'someday'
+  - 'minor'

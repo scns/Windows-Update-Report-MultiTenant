@@ -1,0 +1,169 @@
+---
+name: "Auto Labeler"
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  auto-label:
+    name: 🏷️ Auto Label PR/Issue
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4
+
+      # Label PRs based on file changes
+      - name: 🏷️ Label PR based on changed files
+        if: github.event_name == 'pull_request'
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+      # Label based on title and body content for both PRs and Issues
+      - name: 🏷️ Label based on content
+        uses: github/issue-labeler@v3.4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/issue-labeler.yml
+          enable-versioned-regex: 0
+          include-title: 1
+
+      # Auto-assign priority labels based on keywords
+      - name: 🚨 Auto assign priority labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request?.title || context.payload.issue?.title || '';
+            const body = context.payload.pull_request?.body || context.payload.issue?.body || '';
+            const content = (title + ' ' + body).toLowerCase();
+            
+            const labels = [];
+            
+            // Priority labeling
+            if (content.includes('critical') || content.includes('urgent') || content.includes('breaking')) {
+              labels.push('priority-critical');
+            } else if (content.includes('important') || content.includes('security') || content.includes('bug')) {
+              labels.push('priority-high');
+            } else if (content.includes('feature') || content.includes('enhancement')) {
+              labels.push('priority-medium');
+            }
+            
+            // Type labeling
+            if (content.includes('kb') || content.includes('knowledge base') || content.includes('mapping')) {
+              labels.push('kb-update');
+            }
+            
+            if (content.includes('documentation') || content.includes('readme') || content.includes('docs')) {
+              labels.push('documentation');
+            }
+            
+            if (content.includes('security') || content.includes('vulnerability') || content.includes('cve')) {
+              labels.push('security');
+            }
+            
+            if (content.includes('performance') || content.includes('optimization') || content.includes('speed')) {
+              labels.push('performance');
+            }
+            
+            if (content.includes('refactor') || content.includes('cleanup') || content.includes('code quality')) {
+              labels.push('refactor');
+            }
+            
+            if (content.includes('breaking change') || content.includes('breaking-change')) {
+              labels.push('breaking-change');
+            }
+            
+            if (content.includes('help wanted') || content.includes('help-wanted')) {
+              labels.push('help-wanted');
+            }
+            
+            if (content.includes('good first issue') || content.includes('beginner')) {
+              labels.push('beginner-friendly');
+            }
+            
+            // Apply labels if any were found
+            if (labels.length > 0) {
+              const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: labels
+              });
+            }
+
+      # Auto-assign type labels for PRs based on file changes
+      - name: 🔍 Analyze PR changes and assign type labels
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            
+            // Get list of files changed in the PR
+            const files = await github.rest.pulls.listFiles({
+              owner,
+              repo,
+              pull_number,
+            });
+            
+            const labels = [];
+            const changedFiles = files.data.map(file => file.filename);
+            
+            // Check file patterns and assign appropriate labels
+            for (const file of changedFiles) {
+              // KB-related files
+              if (file.includes('kb-mapping') || file.includes('KB-CACHING') || 
+                  file.includes('knowledge') || file.endsWith('.json') && file.includes('kb')) {
+                if (!labels.includes('kb-update')) labels.push('kb-update');
+              }
+              
+              // Documentation files
+              if (file.endsWith('.md') || file.includes('docs') || file.includes('README')) {
+                if (!labels.includes('documentation')) labels.push('documentation');
+              }
+              
+              // PowerShell scripts
+              if (file.endsWith('.ps1') || file.endsWith('.psm1')) {
+                if (!labels.includes('enhancement')) labels.push('enhancement');
+              }
+              
+              // Configuration files
+              if (file.endsWith('.json') || file.endsWith('.yml') || file.endsWith('.yaml')) {
+                if (file.includes('config') || file.includes('credentials')) {
+                  if (!labels.includes('maintenance')) labels.push('maintenance');
+                }
+              }
+              
+              // GitHub workflow files
+              if (file.startsWith('.github/workflows/')) {
+                if (!labels.includes('ci')) labels.push('ci');
+              }
+              
+              // Dependency files
+              if (file.includes('package.json') || file.includes('requirements.txt') || 
+                  file.includes('Pipfile') || file.includes('dependencies')) {
+                if (!labels.includes('dependencies')) labels.push('dependencies');
+              }
+            }
+            
+            // Apply labels if any were found
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pull_number,
+                labels: labels
+              });
+            }

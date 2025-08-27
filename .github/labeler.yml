@@ -1,0 +1,53 @@
+# Configuration for file-based auto labeling
+# See: https://github.com/actions/labeler
+
+# KB Update related files
+kb-update:
+  - "kb-mapping.json"
+  - "KB-CACHING-INFO.md"
+  - "**/*kb*.json"
+  - "**/*knowledge*.md"
+
+# Documentation
+documentation:
+  - "*.md"
+  - "**/*.md"
+  - "docs/**/*"
+  - "README*"
+
+# Configuration files
+maintenance:
+  - "_config.json"
+  - "config.json"
+  - "_credentials.json"
+  - "credentials.json"
+  - "*.json"
+
+# PowerShell scripts
+enhancement:
+  - "*.ps1"
+  - "*.psm1"
+  - "**/*.ps1"
+
+# CI/CD workflows
+ci:
+  - ".github/workflows/**/*"
+  - ".github/**/*.yml"
+  - ".github/**/*.yaml"
+
+# Dependencies
+dependencies:
+  - "package.json"
+  - "requirements.txt"
+  - "**/package*.json"
+
+# Security related
+security:
+  - "SECURITY.md"
+  - "**/*security*"
+
+# Breaking changes (if certain files are modified)
+breaking-change:
+  - "config.json"
+  - "_config.json"
+  - "_credentials.json"
