@@ -24,6 +24,9 @@
 - name: "new-feature"
   color: 0e8a16
   description: "New features or options."
+- name: "kb-update"
+  color: 0366d6
+  description: "Updates to KB mappings, KB database, or KB-related functionality."
 - name: "maintenance"
   color: 2af79e
   description: "Generic maintenance tasks."
