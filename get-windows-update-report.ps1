@@ -704,6 +704,7 @@ foreach ($cred in $data.LoginCredentials) {
                     $MissingUpdates = @()
                     $ActualMissingUpdates = @()  # Voor echte KB nummers/update namen
                     $UpdateStatus = "Onbekend"
+                    $ComplianceStatus = "Onbekend"
                     
                     # Controleer Windows Update compliance status
                     $ComplianceUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/deviceCompliancePolicyStates"
@@ -711,8 +712,15 @@ foreach ($cred in $data.LoginCredentials) {
                         $ComplianceStates = Invoke-MgGraphRequest -Method GET -Uri $ComplianceUri -ErrorAction SilentlyContinue
                         
                         $HasUpdateIssues = $false
+                        $HasNonCompliant = $false
                         if ($ComplianceStates.value) {
                             foreach ($ComplianceState in $ComplianceStates.value) {
+                                # Check voor overall compliance
+                                if ($ComplianceState.state -eq 'nonCompliant') {
+                                    $HasNonCompliant = $true
+                                }
+                                
+                                # Check voor update specifieke issues
                                 if ($ComplianceState.state -eq 'nonCompliant' -and 
                                     ($ComplianceState.settingName -like '*update*' -or 
                                      $ComplianceState.displayName -like '*Update*' -or
@@ -721,6 +729,10 @@ foreach ($cred in $data.LoginCredentials) {
                                     $HasUpdateIssues = $true
                                 }
                             }
+                            # Bepaal compliance status
+                            $ComplianceStatus = if ($HasNonCompliant) { "Non-Compliant" } else { "Compliant" }
+                        } else {
+                            $ComplianceStatus = "Geen data"
                         }
                         
                         if ($HasUpdateIssues) {
@@ -728,6 +740,7 @@ foreach ($cred in $data.LoginCredentials) {
                         }
                     } catch {
                         Write-Verbose "Compliance check failed for $DeviceName"
+                        $ComplianceStatus = "Error"
                     }
                     
                     # Controleer update installation geschiedenis via windowsUpdateStates
@@ -849,6 +862,7 @@ foreach ($cred in $data.LoginCredentials) {
                         OSPlatform = $Device.operatingSystem
                         OSVersion = $Device.osVersion
                         UpdateStatus = $UpdateStatus
+                        ComplianceStatus = $ComplianceStatus
                     }
                     
                 } catch {
@@ -863,6 +877,7 @@ foreach ($cred in $data.LoginCredentials) {
                         OSPlatform = $Device.operatingSystem
                         OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
                         UpdateStatus = "Error"
+                        ComplianceStatus = "Error"
                     }
                 }
             }
@@ -1007,6 +1022,7 @@ foreach ($cred in $data.LoginCredentials) {
         [PSCustomObject]@{
             Device = $_.DeviceName
             "Update Status" = if ($_.UpdateStatus) { $_.UpdateStatus } else { "Onbekend" }
+            "Compliance Status" = if ($_.ComplianceStatus) { $_.ComplianceStatus } else { "Onbekend" }
             "Missing Updates" = if ($ActualMissingUpdates) { $ActualMissingUpdates } else { "" }
             "KB Method" = if ($_.KBMethod) { $_.KBMethod } else { "N/A" }
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
@@ -1370,7 +1386,17 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 default { "color: black;" }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'KB Method')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            # Compliance Status kleuren
+            $ComplianceColor = switch ($row.'Compliance Status') {
+                "Compliant" { "color: #28a745;" }
+                "Non-Compliant" { "color: #e74c3c; font-weight: bold;" }
+                "Error" { "color: #fd7e14;" }
+                "Geen data" { "color: #6c757d;" }
+                "Onbekend" { "color: #6c757d;" }
+                default { "color: #6c757d;" }
+            }
+            
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'KB Method')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -1438,6 +1464,9 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 <button class="filter-btn manual" onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')">
                     <i class="fa-solid fa-user-cog"></i> Handmatige Controle ($($CustomerStats.ManualPCs))
                 </button>
+                <button class="filter-btn non-compliant" onclick="filterByCompliance('overviewTable_$Customer', 'Non-Compliant')">
+                    <i class="fa-solid fa-times-circle"></i> Non-Compliant
+                </button>
             </div>
         </div>
         
@@ -1448,6 +1477,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 <tr>
                     <th>Device</th>
                     <th>Update Status</th>
+                    <th>Compliance Status</th>
                     <th>Missing Updates</th>
                     <th>KB Method</th>
                     <th>OS Version</th>
@@ -1470,7 +1500,7 @@ $(document).ready(function() {
     function initializeDataTable(tableId) {
         if (!$.fn.DataTable.isDataTable('#' + tableId)) {
             var table = $('#' + tableId).DataTable({
-                "order": [[2, "desc"]],
+                "order": [[1, "desc"]],
                 "language": {
                     "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/nl-NL.json"
                 },
@@ -1492,6 +1522,28 @@ $(document).ready(function() {
                     
                     // Maak dropdown met unieke waarden
                     var select = '<br><select style="width:90%;font-size:12px;"><option value="">Alle statussen</option>';
+                    uniqueValues.forEach(function(value) {
+                        select += '<option value="' + value + '">' + value + '</option>';
+                    });
+                    select += '</select>';
+                    
+                    $(this).append(select);
+                    $(this).find("select").on('change', function () {
+                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        table.column(i).search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+                // Voor "Compliance Status" kolom (index 2): gebruik dropdown filter
+                } else if (i === 2 && title.includes('Compliance Status')) {
+                    // Verzamel unieke waarden uit de kolom
+                    var uniqueValues = [];
+                    table.column(i).data().unique().sort().each(function (d, j) {
+                        if (d && uniqueValues.indexOf(d) === -1) {
+                            uniqueValues.push(d);
+                        }
+                    });
+                    
+                    // Maak dropdown met unieke waarden
+                    var select = '<br><select style="width:90%;font-size:12px;"><option value="">Alle compliance</option>';
                     uniqueValues.forEach(function(value) {
                         select += '<option value="' + value + '">' + value + '</option>';
                     });
@@ -1582,6 +1634,10 @@ $(document).ready(function() {
             }
         }
         
+        // Reset Compliance Status filter (kolom 2) wanneer Update Status filter wordt gebruikt
+        table.column(2).search('').draw();
+        $('#' + tableId + ' thead th:eq(2) select').val('');
+        
         // Update Status kolom is index 1
         if (status === '') {
             // Reset filter - toon alle statussen
@@ -1602,6 +1658,39 @@ $(document).ready(function() {
             if (exactMatch) {
                 $('#' + tableId + ' thead th:eq(1) select').val(status);
             }
+        }
+    }
+    
+    // Functie voor snelfilters op Compliance Status
+    window.filterByCompliance = function(tableId, complianceStatus) {
+        var table = $('#' + tableId).DataTable();
+        
+        // Haal de klant naam uit de table ID
+        var customerName = tableId.replace('overviewTable_', '');
+        
+        // Reset alle andere filter button states
+        var updateFilterContainer = document.querySelector('#' + customerName + ' .filter-buttons');
+        if (updateFilterContainer) {
+            updateFilterContainer.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+        
+        // Reset Update Status filter (kolom 1)
+        table.column(1).search('').draw();
+        $('#' + tableId + ' thead th:eq(1) select').val('');
+        
+        // Compliance Status kolom is index 2
+        if (complianceStatus === '') {
+            // Reset filter - toon alle compliance statussen
+            table.column(2).search('').draw();
+            // Reset ook de dropdown
+            $('#' + tableId + ' thead th:eq(2) select').val('');
+        } else {
+            // Filter op specifieke compliance status
+            table.column(2).search('^' + complianceStatus + '$', true, false).draw();
+            // Update ook de dropdown
+            $('#' + tableId + ' thead th:eq(2) select').val(complianceStatus);
         }
     }
 });
@@ -1721,6 +1810,8 @@ $Html = @"
     .filter-btn.outdated:hover, .filter-btn.outdated.active { background: #fd7e14; color: white; }
     .filter-btn.manual { border-color: #6f42c1; color: #6f42c1; }
     .filter-btn.manual:hover, .filter-btn.manual.active { background: #6f42c1; color: white; }
+    .filter-btn.non-compliant { border-color: #e74c3c; color: #e74c3c; font-weight: bold; }
+    .filter-btn.non-compliant:hover, .filter-btn.non-compliant.active { background: #e74c3c; color: white; font-weight: bold; }
     
     /* Dark mode filter buttons */
     body.darkmode .filter-btn { background: #1e1e1e; border-color: #333; color: #e0e0e0; }
@@ -1736,6 +1827,8 @@ $Html = @"
     body.darkmode .filter-btn.outdated:hover, body.darkmode .filter-btn.outdated.active { background: #ffaa66; color: #121212; }
     body.darkmode .filter-btn.manual { border-color: #b084ff; color: #b084ff; }
     body.darkmode .filter-btn.manual:hover, body.darkmode .filter-btn.manual.active { background: #b084ff; color: #121212; }
+    body.darkmode .filter-btn.non-compliant { border-color: #ff6b6b; color: #ff6b6b; font-weight: bold; }
+    body.darkmode .filter-btn.non-compliant:hover, body.darkmode .filter-btn.non-compliant.active { background: #ff6b6b; color: #121212; font-weight: bold; }
     
     /* Dark mode container styling */
     body.darkmode div[style*="background: #f8f9fa"] { background: #2a2a2a !important; }
