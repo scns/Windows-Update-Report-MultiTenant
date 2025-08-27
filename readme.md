@@ -29,7 +29,7 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 ### 🛡️ **Device Compliance Monitoring**
 
 - **Microsoft Graph Integration**: Volledige integratie met `deviceCompliancePolicyStates` API
-- **Compliance Status Tracking**: 
+- **Compliance Status Tracking**:
   - **Compliant**: Device voldoet aan alle compliance policies
   - **Non-Compliant**: Device heeft compliance issues gedetecteerd
   - **Geen data**: Geen compliance informatie beschikbaar
