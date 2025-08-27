@@ -1,4 +1,4 @@
-# Windows Update Report MultiTenant### 🗄️ **KB Mapping Database & Intelligent Caching**
+# Windows Update Report MultiTenant
 
 | Repository Status | Windows Update Report |
 | :--- | :--- |
@@ -7,24 +7,45 @@
 
 ![Dashboard voorbeeld](images/001.png)
 
-Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update status per device voor meerdere tenants via Microsoft Graph. Het resultaat is een dynamisch HTML-dashboard met filterbare tabellen, grafieken en gedetailleerde KB informatie.
+Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update en device compliance status voor meerdere tenants via Microsoft Graph. Het resultaat is een professioneel HTML-dashboard met filterbare tabellen, grafieken, compliance monitoring en gedetailleerde KB informatie.
 
-## Hoofdfunctionaliteit
+## 🚀 Hoofdfunctionaliteit
 
 - **Automatische module installatie**: Controleert en installeert automatisch benodigde PowerShell modules
 - **Configureerbare instellingen**: Alle instellingen beheerbaar via `config.json`
-- **Multi-tenant ondersteuning**: Haalt per tenant Windows Update status op via Microsoft Graph Device Management API met Threat Hunting API fallback
-- **Intelligente KB detectie**: Toont specifieke ontbrekende KB nummers en security patches met online KB mapping database
-- **KB Mapping Database**: Uitgebreide online database met Windows Update KB informatie en intelligent caching systeem
+- **Multi-tenant ondersteuning**: Haalt per tenant Windows Update en compliance status op via Microsoft Graph
+- **Device Compliance Monitoring**: Complete device compliance status tracking via Microsoft Graph API
+- **Intelligente KB detectie**: Toont specifieke ontbrekende KB nummers en security patches
+- **KB Mapping Database**: Uitgebreide online database met intelligent caching systeem
 - **OS versie analyse**: Automatische detectie van verouderde Windows builds en aanbevelingen
-- **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant
-- **Interactief HTML-dashboard**: Genereert dashboard met filterbare tabellen, snelfilters en grafieken
-- **KB Mapping Database Dashboard**: Dedicated tabblad met overzicht van beschikbare KB mappings en cache status
-- **App Registration status monitoring**: Dedicated tabblad voor overzicht van client secret vervaldatums per tenant
+- **Timezone ondersteuning**: Configureerbare tijdzone conversie voor accurate LastSeen tijden
+- **Flexibele export opties**: Exporteert resultaten naar CSV-bestanden per klant inclusief compliance data
+- **Interactief HTML-dashboard**: Professioneel dashboard met filterbare tabellen, snelfilters en grafieken
 - **Intelligente bestandsbeheer**: Automatische archivering van oude export bestanden
 - **Automatische browser integratie**: Configureerbaar automatisch openen van het gegenereerde rapport
 
-## Nieuwe Functionaliteiten v3.0
+## 🆕 Nieuwe Functionaliteiten v3.0
+
+### 🛡️ **Device Compliance Monitoring**
+
+- **Microsoft Graph Integration**: Volledige integratie met `deviceCompliancePolicyStates` API
+- **Compliance Status Tracking**:
+  - **Compliant**: Device voldoet aan alle compliance policies
+  - **Non-Compliant**: Device heeft compliance issues gedetecteerd
+  - **Geen data**: Geen compliance informatie beschikbaar
+  - **Error**: Fout opgetreden tijdens compliance controle
+- **Visual Indicators**: Kleurgecodeerde compliance status (groen/rood/grijs/oranje)
+- **Dedicated Filtering**: Non-Compliant quick filter voor snelle problem identification
+- **CSV Export**: Compliance status opgenomen in alle export bestanden
+- **Dropdown Filters**: Compliance Status kolom heeft eigen dropdown filter
+
+### 🕐 **Timezone Support**
+
+- **Configureerbare Offset**: Instelbare tijdzone via `timezoneOffsetHours` in config.json
+- **Robuuste Conversie**: Ondersteunt meerdere DateTime formaten voor maximale compatibiliteit
+- **UTC Detection**: Intelligente tijdzone detectie en conversie
+- **Visual Feedback**: HTML headers tonen tijdzone informatie (bijv. "LastSeen (UTC+2)")
+- **Accurate Calculations**: Verbeterde sync berekeningen met tijdzone correctie
 
 ### 🎯 **Intelligente Update Detectie**
 
@@ -33,8 +54,9 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **Update status categorieën**:
   - "Up-to-date", "Verouderde OS versie", "Handmatige controle vereist"
   - "Waarschijnlijk up-to-date", "Updates wachtend", "Update fouten"
+  - "Compliance problemen", "Synchronisatie vereist", "Error"
 
-### �️ **KB Mapping Database & Intelligent Caching**
+### 🗄️ **KB Mapping Database & Intelligent Caching**
 
 - **Online KB database**: Uitgebreide mapping van Windows build numbers naar specifieke KB updates
 - **Intelligent caching systeem**: Downloads KB database eenmalig en cached voor configureerbare duur (standaard 30 minuten)
@@ -44,34 +66,217 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **Multi-platform support**: Ondersteunt Windows 10, Windows 11 en historische versies
 - **Cache methode tracking**: Toont bron van KB informatie (Online, Cache, ExpiredCache, Local, Estimated)
 
-### �🔍 **Geavanceerde Filtering**
+### 🔍 **Geavanceerde Filtering & UI**
 
-- **Dropdown filters**: Update Status kolom heeft dropdown met alle beschikbare statussen
+- **Dropdown filters**: Update Status en Compliance Status kolommen hebben dropdown met alle beschikbare opties
 - **Snelfilter knoppen**: Kleurgecodeerde knoppen voor directe filtering op:
-  - 🟢 Up-to-date
-  - 🟠 Verouderde OS versie  
-  - 🔴 Handmatige controle vereist
-  - 🔵 Waarschijnlijk up-to-date
-  - 🟣 Errors
-- **Gesynchroniseerde filtering**: Dropdown en snelfilters werken samen
+  - Up-to-date (groen), Updates Wachtend (geel), Update Fouten (rood)
+  - Verouderde OS (oranje), Handmatige Controle (paars), Non-Compliant (unieke rode kleur)
+- **Filter Synchronisatie**: Automatische reset van conflicterende filters voor consistente ervaring
+- **Dark Theme Support**: Optimale zichtbaarheid in zowel light als dark browser themes
+- **Filter Counters**: Alle filter buttons tonen aantal machines per status
 
-### 📊 **Uitgebreide Rapportage**
+### 📊 **Enhanced Dashboard & Statistics**
 
-- **Missing Updates kolom**: Toont specifieke ontbrekende KB nummers en update namen
-- **Details kolom**: Bevat statusberichten en diagnostische informatie  
-- **Count logica**: Binary indicator (0 = up-to-date, 1 = aandacht vereist)
-- **OS versie trending**: Toont percentage machines op nieuwste vs verouderde builds
+- **Globale Statistieken**: Overzicht van alle tenants met totalen en percentages
+- **Per-Client Statistieken**: Gedetailleerde breakdown per klant met visual cards
+- **Compliance Percentages**: Up-to-date percentages en compliance ratios
+- **Interactive Charts**: Grafische weergave van update status distributie
+- **Professional Styling**: Bootstrap-compatible styling voor professionele uitstraling
+- **Export Functies**: Volledige tabel export en gefilterde export opties
 
-### 🔄 **API Intelligentie**
+## 📋 Vereiste Microsoft Graph API Permissions
 
-- **Primary**: Device Management API voor gedetailleerde Windows Update informatie
-- **Secondary**: Configuration compliance voor policy violations
-- **Fallback**: Threat Hunting API voor tenants zonder Device Management toegang
-- **Smart detection**: Build analysis voor praktische update suggesties
+Voor volledige functionaliteit zijn de volgende **Application Permissions** vereist:
+
+### 🔒 Device Management & Compliance
+
+```text
+DeviceManagementManagedDevices.Read.All
+DeviceManagementConfiguration.Read.All
+```
+
+**Voor**: Device management API, compliance policy states, en device configuration informatie
+
+### 🛡️ Security & Threat Hunting
+
+```text
+ThreatHunting.Read.All
+```
+
+**Voor**: Fallback device informatie via Advanced Hunting KQL queries
+
+### 📊 Directory Information
+
+```text
+Device.Read.All
+Directory.Read.All
+```
+
+**Voor**: Device directory informatie en organizational context
+
+### ⚙️ Application Monitoring
+
+```text
+Application.Read.All
+```
+
+**Voor**: App Registration expiry monitoring en certificate status
+
+## 🛠️ Installatie & Setup
+
+### 1. Repository Setup
+
+```powershell
+git clone https://github.com/scns/Windows-Update-Report-MultiTenant.git
+cd Windows-Update-Report-MultiTenant
+```
+
+### 2. Configuratie
+
+```powershell
+# Kopieer template bestanden
+Copy-Item "_config.json" "config.json"
+Copy-Item "_credentials.json" "credentials.json"
+
+# Pas configuratie aan (zie CONFIG-UITLEG.md voor details)
+notepad config.json
+notepad credentials.json
+```
+
+### 3. App Registration Setup
+
+1. Ga naar [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
+2. Maak nieuwe App Registration aan
+3. Voeg de vereiste API permissions toe (zie lijst hierboven)
+4. Genereer client secret
+5. Vul `credentials.json` in met tenant ID, client ID en client secret per tenant
+
+### 4. Eerste Run
+
+```powershell
+.\get-windows-update-report.ps1
+```
+
+Het script installeert automatisch benodigde PowerShell modules en genereert het eerste rapport.
+
+## ⚙️ Configuratie Opties
+
+### Timezone Configuration
+
+```json
+{
+    "timezoneOffsetHours": 2
+}
+```
+
+Opties:
+
+- **Nederland (zomer)**: `2` (UTC+2)
+- **Nederland (winter)**: `1` (UTC+1)
+- **UTC tijd**: `0`
+- **US Eastern**: `-5` (UTC-5)
+
+### KB Mapping Cache
+
+```json
+{
+    "kbMapping": {
+        "cacheValidMinutes": 30,
+        "timeoutSeconds": 10,
+        "fallbackToLocalMapping": true
+    }
+}
+```
+
+### Export Management
+
+```json
+{
+    "exportRetentionCount": 40,
+    "cleanupOldExports": true,
+    "autoOpenHtmlReport": false
+}
+```
+
+## 📁 Bestandsstructuur
+
+```text
+Windows-Update-Report-MultiTenant/
+├── get-windows-update-report.ps1    # Hoofd PowerShell script
+├── config.json                      # Configuratie instellingen
+├── credentials.json                  # Tenant credentials (exclusief git)
+├── kb-mapping.json                   # Lokale KB mapping database
+├── exports/                          # Gegenereerde rapporten
+├── archive/                          # Gearchiveerde oude exports
+├── backup/                           # Automatische backups
+├── images/                           # Dashboard screenshots
+├── CONFIG-UITLEG.md                  # Gedetailleerde configuratie uitleg
+├── KB-CACHING-INFO.md               # KB caching documentatie
+├── SECURITY.md                       # Beveiligingsbeleid
+├── CONTRIBUTING.md                   # Contributie richtlijnen
+└── CODE_OF_CONDUCT.md               # Gedragscode
+```
+
+## 🔧 Troubleshooting
+
+### Permissions Errors
+
+- Controleer of alle vereiste API permissions zijn toegekend
+- Zorg ervoor dat permissions zijn "granted" door een admin
+- Controleer client secret geldigheid
+
+### Timezone Issues
+
+- Pas `timezoneOffsetHours` aan in config.json
+- Check of LastSeen tijden correct worden weergegeven
+- Gebruik UTC offset voor uw tijdzone
+
+### Cache Problems
+
+- KB mapping cache wordt automatisch ververst na 30 minuten
+- Bij problemen: verwijder `Global:CachedKBMapping` variabele
+- Check internet connectiviteit voor online KB database
+
+### Compliance Data Missing
+
+- Zorg ervoor dat `DeviceManagementConfiguration.Read.All` permission is toegekend
+- Controleer of devices enrolled zijn in Intune
+- Fallback naar "Geen data" status is normaal voor niet-managed devices
+
+## 📚 Documentatie Links
+
+- **[Configuratie Uitleg](CONFIG-UITLEG.md)** - Gedetailleerde uitleg van alle config opties
+- **[KB Caching Info](KB-CACHING-INFO.md)** - KB mapping cache configuratie en troubleshooting
+- **[Security Policy](SECURITY.md)** - Beveiligingsbeleid en kwetsbaarheid rapportage
+- **[Contributing Guidelines](CONTRIBUTING.md)** - Richtlijnen voor bijdragen aan het project
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Gedragscode voor contributors
+
+## 🤝 Contributing
+
+Bijdragen zijn welkom! Zie [CONTRIBUTING.md](CONTRIBUTING.md) voor richtlijnen.
+
+## 📄 License
+
+Dit project valt onder de [MIT License](LICENSE).
+
+## 🔒 Security
+
+Voor beveiligingsgerelateerde zaken, zie [SECURITY.md](SECURITY.md).
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/scns/Windows-Update-Report-MultiTenant/issues)
+- **Email**: [info@maarten-schmeitz.nl](mailto:info@maarten-schmeitz.nl)
+- **Documentation**: Zie de bijgevoegde MD bestanden voor gedetailleerde informatie
+
+---
+
+**Versie**: 3.0 | **Laatste Update**: Augustus 2025 | **PowerShell**: 7.2+ | **Microsoft Graph**: v1.0 & Beta
 
 ## Benodigdheden
 
-- PowerShell 5+
+- PowerShell 7.2+
 - Microsoft Graph PowerShell SDK (wordt automatisch geïnstalleerd)
 - Een Azure AD App Registration per tenant met de juiste permissies
 
