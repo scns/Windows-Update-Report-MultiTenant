@@ -43,10 +43,67 @@ catch {
     exit 1
 }
 
+# Timezone conversie functie
+function Convert-UTCToLocalTime {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$UTCTimeString,
+        [Parameter(Mandatory=$false)]
+        [int]$OffsetHours = 0
+    )
+    
+    try {
+        # Controleer of de string al timezone info bevat
+        if ($UTCTimeString -match 'Z$' -or $UTCTimeString -match '[+-]\d{2}:\d{2}$') {
+            # Parse als UTC tijd met timezone info
+            $utcTime = [DateTime]::Parse($UTCTimeString).ToUniversalTime()
+        } else {
+            # Probeer verschillende DateTime formaten
+            $utcTime = $null
+            $formats = @(
+                "yyyy-MM-ddTHH:mm:ss.fffZ",
+                "yyyy-MM-ddTHH:mm:ssZ", 
+                "yyyy-MM-ddTHH:mm:ss",
+                "MM/dd/yyyy HH:mm:ss",
+                "dd/MM/yyyy HH:mm:ss"
+            )
+            
+            foreach ($format in $formats) {
+                try {
+                    $utcTime = [DateTime]::ParseExact($UTCTimeString, $format, $null)
+                    break
+                } catch {
+                    # Probeer volgende formaat
+                }
+            }
+            
+            # Als geen formaat werkt, probeer standaard parse
+            if (-not $utcTime) {
+                $utcTime = [DateTime]::Parse($UTCTimeString)
+            }
+        }
+        
+        # Voeg offset toe
+        $localTime = $utcTime.AddHours($OffsetHours)
+        
+        # Return formatted string
+        return $localTime.ToString("yyyy-MM-dd HH:mm:ss")
+    }
+    catch {
+        # Return original string als conversie faalt
+        Write-Verbose "Timezone conversie gefaald voor '$UTCTimeString': $($_.Exception.Message)"
+        return $UTCTimeString
+    }
+}
+
 # Globale cache voor KB mapping
 $Global:CachedKBMapping = $null
 $Global:KBMappingCacheTime = $null
 $Global:KBMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
+
+# Timezone offset uit config (standaard 0 voor UTC)
+$TimezoneOffsetHours = if ($config.timezoneOffsetHours) { $config.timezoneOffsetHours } else { 0 }
+Write-Host "Timezone offset: UTC+$TimezoneOffsetHours uur" -ForegroundColor Cyan
 
 # Functie om KB mapping te laden en cachen
 function Get-CachedKBMapping {
@@ -687,7 +744,7 @@ foreach ($cred in $data.LoginCredentials) {
                     DeviceName = $_.DeviceName
                     MissingUpdates = @("Windows Update status: Controleer handmatig - Device niet in Intune beheer")
                     Count = 1  # Handmatige controle vereist = niet up-to-date
-                    LastSeen = $_.LastSeen
+                    LastSeen = Convert-UTCToLocalTime -UTCTimeString $_.LastSeen -OffsetHours $TimezoneOffsetHours
                     LoggedOnUsers = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
                     OSPlatform = $_.OSPlatform
                     OSVersion = $_.OSVersion
@@ -825,7 +882,35 @@ foreach ($cred in $data.LoginCredentials) {
                     # Als geen specifieke problemen gevonden, bepaal status op basis van synchronisatie en OS versie
                     if ($MissingUpdates.Count -eq 0 -and $UpdateStatus -eq "Onbekend") {
                         $DaysSinceSync = if ($Device.lastSyncDateTime) {
-                            [Math]::Round((New-TimeSpan -Start ([DateTime]$Device.lastSyncDateTime) -End (Get-Date)).TotalDays)
+                            try {
+                                # Probeer verschillende DateTime formaten voor robuuste parsing
+                                $syncTime = $null
+                                $formats = @(
+                                    "yyyy-MM-ddTHH:mm:ss.fffZ",
+                                    "yyyy-MM-ddTHH:mm:ssZ", 
+                                    "yyyy-MM-ddTHH:mm:ss",
+                                    "MM/dd/yyyy HH:mm:ss",
+                                    "dd/MM/yyyy HH:mm:ss"
+                                )
+                                
+                                foreach ($format in $formats) {
+                                    try {
+                                        $syncTime = [DateTime]::ParseExact($Device.lastSyncDateTime, $format, $null)
+                                        break
+                                    } catch { }
+                                }
+                                
+                                if (-not $syncTime) {
+                                    $syncTime = [DateTime]::Parse($Device.lastSyncDateTime)
+                                }
+                                
+                                # Vergelijk met huidige tijd (beide in UTC als mogelijk)
+                                $now = if ($syncTime.Kind -eq 'Utc') { (Get-Date).ToUniversalTime() } else { Get-Date }
+                                [Math]::Round((New-TimeSpan -Start $syncTime -End $now).TotalDays)
+                            } catch {
+                                Write-Verbose "Kan lastSyncDateTime niet parsen voor $($Device.deviceName): $($Device.lastSyncDateTime)"
+                                999
+                            }
                         } else { 999 }
                         
                         # Controleer OS versie - voeg deze informatie toe voor transparantie
@@ -857,7 +942,7 @@ foreach ($cred in $data.LoginCredentials) {
                         MissingUpdates = $MissingUpdates
                         ActualMissingUpdates = $ActualMissingUpdates
                         Count = if ($UpdateStatus -in @("Up to date", "Waarschijnlijk up to date")) { 0 } else { 1 }
-                        LastSeen = $Device.lastSyncDateTime
+                        LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
                         OSVersion = $Device.osVersion
@@ -872,7 +957,7 @@ foreach ($cred in $data.LoginCredentials) {
                         DeviceName = $Device.deviceName
                         MissingUpdates = @("Error: Kan Windows Update status niet controleren")
                         Count = 1  # Error = niet up-to-date
-                        LastSeen = $Device.lastSyncDateTime
+                        LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
                         OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
@@ -1482,7 +1567,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>KB Method</th>
                     <th>OS Version</th>
                     <th>Count</th>
-                    <th>LastSeen</th>
+                    <th>LastSeen (UTC+$TimezoneOffsetHours)</th>
                     <th>LoggedOnUsers</th>
                 </tr>
             </thead>
