@@ -64,6 +64,5 @@ security:
 breaking-change:
   - changed-files:
     - any-glob-to-any-file:
-      - "get-windows-update-report.ps1"
-      - "config.json"
+      - "_credentials.json"
       - "_config.json"
