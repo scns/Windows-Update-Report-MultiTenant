@@ -1350,6 +1350,7 @@ $GlobalStats = @{
     FailedPCs = 0
     OutdatedPCs = 0
     ManualPCs = 0
+    SyncPCs = 0
     CompliancePercentage = 0
 }
 
@@ -1379,8 +1380,11 @@ foreach ($Customer in $LatestCsvPerCustomer.Keys) {
                 { $_ -eq "Up to date" -or $_ -eq "Waarschijnlijk up to date" } {
                     $GlobalStats.UpToDatePCs++
                 }
-                { $_ -match "wachtend|Synchronisatie" } {
-                    $GlobalStats.PendingPCs++
+                { $_ -match "wachtend" } {
+                    # PendingPCs wordt nu berekend via Count kolom (zie onder)
+                }
+                { $_ -eq "Synchronisatie vereist" } {
+                    $GlobalStats.SyncPCs++
                 }
                 { $_ -match "fout|Error|problemen" } {
                     $GlobalStats.FailedPCs++
@@ -1392,6 +1396,9 @@ foreach ($Customer in $LatestCsvPerCustomer.Keys) {
                     $GlobalStats.ManualPCs++
                 }
             }
+            
+            # PendingPCs is de som van alle Count waarden (1 = update vereist, 0 = up-to-date)
+            $GlobalStats.PendingPCs += [int]$row.Count
         }
     }
 }
@@ -1416,6 +1423,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
         FailedPCs = 0
         OutdatedPCs = 0
         ManualPCs = 0
+        SyncPCs = 0
         CompliancePercentage = 0
     }
     
@@ -1443,8 +1451,11 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 { $_ -eq "Up to date" -or $_ -eq "Waarschijnlijk up to date" } {
                     $CustomerStats.UpToDatePCs++
                 }
-                { $_ -match "wachtend|Synchronisatie" } {
-                    $CustomerStats.PendingPCs++
+                { $_ -match "wachtend" } {
+                    # PendingPCs wordt nu berekend via Count kolom (zie onder)
+                }
+                { $_ -eq "Synchronisatie vereist" } {
+                    $CustomerStats.SyncPCs++
                 }
                 { $_ -match "fout|Error|problemen" } {
                     $CustomerStats.FailedPCs++
@@ -1457,6 +1468,9 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 }
             }
             
+            # PendingPCs is de som van alle Count waarden (1 = update vereist, 0 = up-to-date)
+            $CustomerStats.PendingPCs += [int]$row.Count
+            
             # Voeg status kleuren toe
             $StatusColor = switch ($row.'Update Status') {
                 "Up to date" { "color: #28a745; font-weight: bold;" }
@@ -1465,7 +1479,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 "Compliance problemen" { "color: #dc3545; font-weight: bold;" }
                 "Updates wachtend" { "color: #ffc107; font-weight: bold;" }
                 "Update fouten" { "color: #dc3545; font-weight: bold;" }
-                "Synchronisatie vereist" { "color: #ffc107;" }
+                "Synchronisatie vereist" { "color: #17a2b8; font-weight: bold;" }
                 "Error" { "color: #dc3545; font-weight: bold;" }
                 "Handmatige controle vereist" { "color: #6f42c1;" }
                 default { "color: black;" }
@@ -1537,9 +1551,6 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 <button class="filter-btn up-to-date" onclick="filterByStatus('overviewTable_$Customer', 'Up to date')">
                     <i class="fa-solid fa-check-circle"></i> Up to date ($($CustomerStats.UpToDatePCs))
                 </button>
-                <button class="filter-btn pending" onclick="filterByStatus('overviewTable_$Customer', 'wachtend')">
-                    <i class="fa-solid fa-clock"></i> Updates Wachtend ($($CustomerStats.PendingPCs))
-                </button>
                 <button class="filter-btn failed" onclick="filterByStatus('overviewTable_$Customer', 'fout')">
                     <i class="fa-solid fa-exclamation-triangle"></i> Update Fouten ($($CustomerStats.FailedPCs))
                 </button>
@@ -1548,6 +1559,9 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 </button>
                 <button class="filter-btn manual" onclick="filterByStatus('overviewTable_$Customer', 'Handmatige controle vereist')">
                     <i class="fa-solid fa-user-cog"></i> Handmatige Controle ($($CustomerStats.ManualPCs))
+                </button>
+                <button class="filter-btn sync" onclick="filterByStatus('overviewTable_$Customer', 'Synchronisatie vereist')">
+                    <i class="fa-solid fa-sync"></i> Synchronisatie Vereist ($($CustomerStats.SyncPCs))
                 </button>
                 <button class="filter-btn non-compliant" onclick="filterByCompliance('overviewTable_$Customer', 'Non-Compliant')">
                     <i class="fa-solid fa-times-circle"></i> Non-Compliant
@@ -1895,6 +1909,8 @@ $Html = @"
     .filter-btn.outdated:hover, .filter-btn.outdated.active { background: #fd7e14; color: white; }
     .filter-btn.manual { border-color: #6f42c1; color: #6f42c1; }
     .filter-btn.manual:hover, .filter-btn.manual.active { background: #6f42c1; color: white; }
+    .filter-btn.sync { border-color: #17a2b8; color: #17a2b8; }
+    .filter-btn.sync:hover, .filter-btn.sync.active { background: #17a2b8; color: white; }
     .filter-btn.non-compliant { border-color: #e74c3c; color: #e74c3c; font-weight: bold; }
     .filter-btn.non-compliant:hover, .filter-btn.non-compliant.active { background: #e74c3c; color: white; font-weight: bold; }
     
@@ -1912,6 +1928,8 @@ $Html = @"
     body.darkmode .filter-btn.outdated:hover, body.darkmode .filter-btn.outdated.active { background: #ffaa66; color: #121212; }
     body.darkmode .filter-btn.manual { border-color: #b084ff; color: #b084ff; }
     body.darkmode .filter-btn.manual:hover, body.darkmode .filter-btn.manual.active { background: #b084ff; color: #121212; }
+    body.darkmode .filter-btn.sync { border-color: #4dd4ff; color: #4dd4ff; }
+    body.darkmode .filter-btn.sync:hover, body.darkmode .filter-btn.sync.active { background: #4dd4ff; color: #121212; }
     body.darkmode .filter-btn.non-compliant { border-color: #ff6b6b; color: #ff6b6b; font-weight: bold; }
     body.darkmode .filter-btn.non-compliant:hover, body.darkmode .filter-btn.non-compliant.active { background: #ff6b6b; color: #121212; font-weight: bold; }
     
