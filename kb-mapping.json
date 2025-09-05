@@ -1,88 +1,191 @@
 {
-  "lastUpdated": "2025-08-26",
-  "version": "1.0",
+  "lastUpdated": "2025-09-05",
+  "version": "2.1",
   "description": "Windows KB Update Mapping voor Build Numbers",
   "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
+  "warnings": {
+    "windows10_eol": "Windows 10 support eindigt op 14 oktober 2025. Plan migratie naar Windows 11.",
+    "next_patch_tuesday": "September 2025 Patch Tuesday: 9 september 2025"
+  },
+  "preview": {
+    "september_2025": {
+      "release_date": "2025-09-09",
+      "type": "Minor Update",
+      "windows11_24h2": {
+        "build": "26100.5074",
+        "kb": "KB5065522"
+      },
+      "windows11_23h2": {
+        "build": "22631.4249", 
+        "kb": "KB5065522"
+      },
+      "windows11_22h2": {
+        "build": "22621.4249",
+        "kb": "KB5065522"
+      },
+      "windows10_22h2": {
+        "build": "19045.5073",
+        "kb": "KB5065522",
+        "note": "Laatste update voor EOL"
+      }
+    }
+  },
   "mappings": {
     "windows11": {
       "26100": {
-        "kb": "KB5041585",
-        "date": "2024-08",
+        "kb": "KB5064081",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 11",
         "version": "24H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "builds": {
+          "26100.5074": {
+            "kb": "KB5065522",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Minor Update"
+          },
+          "26100.2033": {
+            "kb": "KB5064081",
+            "date": "2025-08",
+            "releaseDate": "2025-08-12",
+            "description": "August 2025 Update"
+          },
+          "26100.1742": {
+            "kb": "KB5041585",
+            "date": "2025-07",
+            "releaseDate": "2025-07-09",
+            "description": "July 2025 Update"
+          }
+        }
       },
       "26010": {
-        "kb": "KB5041580",
-        "date": "2024-08",
+        "kb": "KB5064081",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 11",
         "version": "24H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12"
       },
       "22631": {
-        "kb": "KB5041585",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 11",
         "version": "23H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "builds": {
+          "22631.4249": {
+            "kb": "KB5065522",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Minor Update"
+          },
+          "22631.4169": {
+            "kb": "KB5063878",
+            "date": "2025-08",
+            "releaseDate": "2025-08-12",
+            "description": "August 2025 Update"
+          }
+        }
       },
       "22621": {
-        "kb": "KB5041592",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 11",
         "version": "22H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "builds": {
+          "22621.4249": {
+            "kb": "KB5065522",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Minor Update"
+          },
+          "22621.4169": {
+            "kb": "KB5063878",
+            "date": "2025-08",
+            "releaseDate": "2025-08-12",
+            "description": "August 2025 Update"
+          }
+        }
       },
       "22000": {
-        "kb": "KB5041580",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 11",
         "version": "21H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12"
       }
     },
     "windows10": {
       "19045": {
-        "kb": "KB5041580",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "22H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025",
+        "builds": {
+          "19045.5073": {
+            "kb": "KB5065522",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Minor Update - Last updates before EOL"
+          },
+          "19045.4955": {
+            "kb": "KB5063878",
+            "date": "2025-08",
+            "releaseDate": "2025-08-12",
+            "description": "August 2025 Update"
+          }
+        }
       },
       "19044": {
-        "kb": "KB5041580",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "21H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025",
+        "builds": {
+          "19044.5073": {
+            "kb": "KB5065522",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Minor Update - Last updates before EOL"
+          }
+        }
       },
       "19043": {
-        "kb": "KB5041577",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "21H1",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025"
       },
       "19042": {
-        "kb": "KB5041577",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "20H2",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025"
       },
       "19041": {
-        "kb": "KB5041568",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "2004",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025"
       },
       "18363": {
-        "kb": "KB5041561",
-        "date": "2024-08",
+        "kb": "KB5063878",
+        "date": "2025-08",
         "title": "Cumulative Update for Windows 10",
         "version": "1909",
-        "releaseDate": "2024-08-13"
+        "releaseDate": "2025-08-12",
+        "note": "Windows 10 End of Life: 14 oktober 2025"
       },
       "18362": {
         "kb": "KB5041561",
@@ -210,6 +313,10 @@
         "min": 10240,
         "max": 21999
       }
+    },
+    "build_lookup": {
+      "description": "Voor minor builds: zoek eerst in main build, dan in builds sub-object",
+      "example": "26100.5074 -> mappings.windows11.26100.builds['26100.5074']"
     }
   },
   "metadata": {
