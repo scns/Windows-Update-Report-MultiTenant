@@ -346,7 +346,7 @@ function Get-LatestKBUpdate {
         $OnlineKBUrl = if ($Config -and $Config.kbMappingUrl) { 
             $Config.kbMappingUrl 
         } else { 
-            "https://mrtn.blog/wp-content/uploads/2025/08/kb-mapping.json" 
+            "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json" 
         }
         
         $KBNumber = $null
@@ -369,17 +369,42 @@ function Get-LatestKBUpdate {
                 $OnlineMapping.mappings.windows10 
             }
             
-            # Zoek exacte match
+            # Zoek exacte match (inclusief minor builds)
+            $FoundMapping = $null
+            $MajorBuild = $TargetBuild -replace '\.\d+$', ''  # Verwijder minor build nummer
+            
+            # Eerst: zoek exacte match voor volledige build (inclusief minor)
             if ($MappingSection.$TargetBuild) {
                 $FoundMapping = $MappingSection.$TargetBuild
+                Write-Verbose "Found exact build match for: $TargetBuild"
+            }
+            # Tweede: zoek in builds sub-object voor minor builds
+            elseif ($MappingSection.$MajorBuild -and $MappingSection.$MajorBuild.builds -and $MappingSection.$MajorBuild.builds.$TargetBuild) {
+                $FoundMapping = $MappingSection.$MajorBuild.builds.$TargetBuild
+                Write-Verbose "Found minor build match for: $TargetBuild in $MajorBuild.builds"
+            }
+            # Derde: zoek major build als fallback
+            elseif ($MappingSection.$MajorBuild) {
+                $FoundMapping = $MappingSection.$MajorBuild
+                Write-Verbose "Found major build match for: $MajorBuild (fallback from $TargetBuild)"
+            }
+            
+            if ($FoundMapping) {
                 $KBNumber = $FoundMapping.kb
                 # Check of de online title al "for Windows" bevat
                 $baseTitle = $FoundMapping.title
+                if (-not $baseTitle) { $baseTitle = "Cumulative Update" }
                 if ($baseTitle -notmatch "for Windows") {
                     $UpdateTitle = "$($FoundMapping.date) $baseTitle for $WindowsProduct ($KBNumber)"
                 } else {
                     $UpdateTitle = "$($FoundMapping.date) $baseTitle ($KBNumber)"
                 }
+                
+                # Voeg beschrijving toe als beschikbaar
+                if ($FoundMapping.description) {
+                    $UpdateTitle += " - $($FoundMapping.description)"
+                }
+                
                 Write-Verbose "Found exact online mapping: $UpdateTitle"
             } else {
                 # Zoek dichtstbijzijnde build
@@ -422,28 +447,35 @@ function Get-LatestKBUpdate {
         # Methode 2: Fallback naar lokale KB mapping
         if (-not $KBNumber -and ($Config.kbMapping.fallbackToLocalMapping -ne $false)) {
             Write-Verbose "Using fallback local KB mapping"
-            # Gebruik bekende patronen voor recente builds (bijgewerkt tot augustus 2025)
+            # Gebruik bekende patronen voor recente builds (bijgewerkt tot september 2025)
             $LocalKBMappings = @{
-                # Windows 11 24H2 (2024-2025)
-                "26100" = @{ KB = "KB5041585"; Date = "2024-08"; Title = "Cumulative Update" }
-                "26010" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                # Windows 11 24H2 (2024-2025) - September updates
+                "26100.5074" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor)" }
+                "26100" = @{ KB = "KB5064081"; Date = "2025-08"; Title = "Cumulative Update" }
+                "26010" = @{ KB = "KB5064081"; Date = "2025-08"; Title = "Cumulative Update" }
                 
-                # Windows 11 23H2 (2023-2024)
-                "22631" = @{ KB = "KB5041585"; Date = "2024-08"; Title = "Cumulative Update" }
-                "22621" = @{ KB = "KB5041592"; Date = "2024-08"; Title = "Cumulative Update" }
+                # Windows 11 23H2 (2023-2025) - September updates
+                "22631.4249" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor)" }
+                "22631" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
                 
-                # Windows 11 22H2 (2022-2023)
-                "22000" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
+                # Windows 11 22H2 (2022-2025) - September updates
+                "22621.4249" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor)" }
+                "22621" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
                 
-                # Windows 10 22H2 (2022-2025)
-                "19045" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
-                "19044" = @{ KB = "KB5041580"; Date = "2024-08"; Title = "Cumulative Update" }
-                "19043" = @{ KB = "KB5041577"; Date = "2024-08"; Title = "Cumulative Update" }
-                "19042" = @{ KB = "KB5041577"; Date = "2024-08"; Title = "Cumulative Update" }
-                "19041" = @{ KB = "KB5041568"; Date = "2024-08"; Title = "Cumulative Update" }
+                # Windows 11 21H2 (2021-2025)
+                "22000" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
                 
-                # Windows 10 oudere versies (bijgewerkt naar recentere datums)
-                "18363" = @{ KB = "KB5041561"; Date = "2024-08"; Title = "Cumulative Update" }
+                # Windows 10 22H2 (2022-2025) - September updates (laatste voor EOL)
+                "19045.5073" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor) - Last before EOL" }
+                "19045" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
+                "19044.5073" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor) - Last before EOL" }
+                "19044" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
+                "19043" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
+                "19042" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
+                "19041" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
+                
+                # Windows 10 oudere versies (bijgewerkt naar augustus 2025)
+                "18363" = @{ KB = "KB5063878"; Date = "2025-08"; Title = "Cumulative Update" }
                 "18362" = @{ KB = "KB5041561"; Date = "2024-07"; Title = "Cumulative Update" }
                 "17763" = @{ KB = "KB5041564"; Date = "2024-08"; Title = "Cumulative Update" }
                 "17134" = @{ KB = "KB5040442"; Date = "2024-07"; Title = "Cumulative Update" }
@@ -458,21 +490,31 @@ function Get-LatestKBUpdate {
                 "26500" = @{ KB = "KB5041900"; Date = "2025-01"; Title = "Cumulative Update" }
             }
             
-            # Zoek naar exacte match eerst
+            # Zoek naar exacte match eerst (inclusief minor builds)
+            $ClosestMapping = $null
+            $MajorBuild = $TargetBuild -replace '\.\d+$', ''  # Verwijder minor build nummer
+            
             if ($LocalKBMappings.ContainsKey($TargetBuild)) {
                 $ClosestMapping = $LocalKBMappings[$TargetBuild]
+                Write-Verbose "Found exact local mapping for: $TargetBuild"
+            } elseif ($LocalKBMappings.ContainsKey($MajorBuild)) {
+                $ClosestMapping = $LocalKBMappings[$MajorBuild]
+                Write-Verbose "Found major build local mapping for: $MajorBuild (from $TargetBuild)"
             } else {
                 # Zoek naar de dichtstbijzijnde mapping
-                $ClosestMapping = $null
                 $SmallestDifference = [int]::MaxValue
                 
                 foreach ($buildKey in $LocalKBMappings.Keys) {
-                    $difference = [Math]::Abs([int]$buildKey - [int]$TargetBuild)
+                    # Skip minor builds bij het zoeken naar dichtstbijzijnde
+                    if ($buildKey -match '\.\d+$') { continue }
+                    
+                    $difference = [Math]::Abs([int]$buildKey - [int]$MajorBuild)
                     if ($difference -lt $SmallestDifference) {
                         $SmallestDifference = $difference
                         $ClosestMapping = $LocalKBMappings[$buildKey]
                     }
                 }
+                Write-Verbose "Found closest local mapping with difference: $SmallestDifference"
             }
             
             if ($ClosestMapping) {
@@ -640,13 +682,27 @@ try {
     if ($kbMappingResult.Success) {
         $totalEntries = 0
         if ($kbMappingResult.Data -and $kbMappingResult.Data.mappings) {
-            # Tel Windows 11 entries
+            # Tel Windows 11 entries (inclusief minor builds)
             if ($kbMappingResult.Data.mappings.windows11) {
                 $totalEntries += ($kbMappingResult.Data.mappings.windows11.PSObject.Properties | Measure-Object).Count
+                # Tel minor builds
+                foreach ($build in $kbMappingResult.Data.mappings.windows11.PSObject.Properties.Name) {
+                    $buildInfo = $kbMappingResult.Data.mappings.windows11.$build
+                    if ($buildInfo.builds) {
+                        $totalEntries += ($buildInfo.builds.PSObject.Properties | Measure-Object).Count
+                    }
+                }
             }
-            # Tel Windows 10 entries
+            # Tel Windows 10 entries (inclusief minor builds)
             if ($kbMappingResult.Data.mappings.windows10) {
                 $totalEntries += ($kbMappingResult.Data.mappings.windows10.PSObject.Properties | Measure-Object).Count
+                # Tel minor builds
+                foreach ($build in $kbMappingResult.Data.mappings.windows10.PSObject.Properties.Name) {
+                    $buildInfo = $kbMappingResult.Data.mappings.windows10.$build
+                    if ($buildInfo.builds) {
+                        $totalEntries += ($buildInfo.builds.PSObject.Properties | Measure-Object).Count
+                    }
+                }
             }
             # Tel Historical entries
             if ($kbMappingResult.Data.mappings.historical) {
@@ -660,7 +716,13 @@ try {
             Success = $true
             Method = $kbMappingResult.Source
             Data = $kbMappingResult.Data
-            LastUpdated = if ($Global:KBMappingCacheTime) { $Global:KBMappingCacheTime.ToString("dd-MM-yyyy HH:mm:ss") } else { "N/A" }
+            LastUpdated = if ($kbMappingResult.Data.lastUpdated) { 
+                "$($kbMappingResult.Data.lastUpdated) (v$($kbMappingResult.Data.version))" 
+            } elseif ($Global:KBMappingCacheTime) { 
+                $Global:KBMappingCacheTime.ToString("dd-MM-yyyy HH:mm:ss") 
+            } else { 
+                "N/A" 
+            }
             TotalEntries = $totalEntries
         }
         Write-Host "KB Mapping geladen: $($KBMappingForHTML.TotalEntries) items via $($KBMappingForHTML.Method)" -ForegroundColor Green
@@ -920,12 +982,75 @@ foreach ($cred in $data.LoginCredentials) {
                             $MissingUpdates = @("Windows Update status: Recent gesynchroniseerd (OS: $OSVersion), geen update problemen gedetecteerd")
                             $UpdateStatus = "Up to date"
                             
-                            # Voor machines die recent hebben gesynchroniseerd maar oudere OS hebben
+                            # Voor machines die recent hebben gesynchroniseerd, controleer of ze de nieuwste KB hebben
                             if ($OSVersion -and $OSVersion -match '10\.0\.(\d+)\.(\d+)') {
-                                $currentBuild = [int]$matches[2]
-                                # Check voor bekende verouderde builds die updates nodig hebben
-                                if ($currentBuild -lt 4946) {
-                                    $ActualMissingUpdates += "Updates beschikbaar"
+                                $currentBuild = "$($matches[1]).$($matches[2])"
+                                $majorBuild = $matches[1]
+                                $minorBuild = [int]$matches[2]
+                                
+                                # Bepaal verwachte KB op basis van Windows versie en huidige datum
+                                $expectedKB = $null
+                                $isLatest = $false
+                                
+                                # Check voor Windows 11 builds
+                                if ([int]$majorBuild -ge 22000) {
+                                    switch ($majorBuild) {
+                                        "26100" { 
+                                            # Windows 11 24H2 - September 2025 minor update verwacht
+                                            $expectedKB = "KB5065522"
+                                            $expectedBuild = "26100.5074"
+                                            $isLatest = ($minorBuild -ge 5074)
+                                        }
+                                        "22631" { 
+                                            # Windows 11 23H2 - September 2025 minor update verwacht
+                                            $expectedKB = "KB5065522"
+                                            $expectedBuild = "22631.4249"
+                                            $isLatest = ($minorBuild -ge 4249)
+                                        }
+                                        "22621" { 
+                                            # Windows 11 22H2 - September 2025 minor update verwacht
+                                            $expectedKB = "KB5065522"
+                                            $expectedBuild = "22621.4249"
+                                            $isLatest = ($minorBuild -ge 4249)
+                                        }
+                                        default {
+                                            # Andere Windows 11 builds - Augustus 2025 als minimum
+                                            $expectedKB = "KB5063878"
+                                            $isLatest = ($minorBuild -ge 4000)  # Ruime schatting
+                                        }
+                                    }
+                                }
+                                # Check voor Windows 10 builds
+                                else {
+                                    switch ($majorBuild) {
+                                        "19045" { 
+                                            # Windows 10 22H2 - Laatste updates voor EOL oktober 2025
+                                            $expectedKB = "KB5065522"
+                                            $expectedBuild = "19045.5073"
+                                            $isLatest = ($minorBuild -ge 5073)
+                                        }
+                                        "19044" { 
+                                            # Windows 10 21H2 - Laatste updates voor EOL
+                                            $expectedKB = "KB5065522"
+                                            $expectedBuild = "19044.5073"
+                                            $isLatest = ($minorBuild -ge 5073)
+                                        }
+                                        default {
+                                            # Andere Windows 10 builds - Augustus 2025 als minimum
+                                            $expectedKB = "KB5063878"
+                                            $isLatest = ($minorBuild -ge 4900)  # Ruime schatting
+                                        }
+                                    }
+                                }
+                                
+                                if (-not $isLatest -and $expectedKB) {
+                                    $ActualMissingUpdates += "Update beschikbaar: $expectedKB"
+                                    if ($expectedBuild) {
+                                        $MissingUpdates = @("Windows Update status: $expectedKB update beschikbaar (huidig: $currentBuild, verwacht: $expectedBuild)")
+                                    } else {
+                                        $MissingUpdates = @("Windows Update status: $expectedKB update beschikbaar (huidig: $currentBuild)")
+                                    }
+                                    $UpdateStatus = "Update beschikbaar"
                                 }
                             }
                         } elseif ($DaysSinceSync -le 7) {
@@ -1864,8 +1989,45 @@ $Html = @"
     body.darkmode .tabcontent { background: #181a1b; color: #eee; }
     body.darkmode .footer { border-top: 1px solid #444; color: #aaa; }
     body.darkmode .footer a { color: #66aaff; }
+    
+    /* KB Database styling */
     .kb-status-box { margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #0066cc; border-radius: 4px; }
     body.darkmode .kb-status-box { background-color: #2a2a2a; border-left-color: #66aaff; }
+    
+    .kb-warnings { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    body.darkmode .kb-warnings { background-color: #4a3e1f; border-color: #6c5c00; color: #fff8dc; }
+    body.darkmode .kb-warnings h3 { color: #ffc107; }
+    
+    .kb-preview { background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    body.darkmode .kb-preview { background-color: #1f3a42; border-color: #356069; color: #e1f5fe; }
+    body.darkmode .kb-preview h3 { color: #17a2b8; }
+    
+    /* KB Table hierarchical styling */
+    .group-header { background-color: #e9ecef !important; font-weight: bold; }
+    body.darkmode .group-header { background-color: #3a3a3a !important; color: #fff; }
+    .group-header td { padding: 12px 8px !important; border-bottom: 2px solid #007bff !important; }
+    body.darkmode .group-header td { border-bottom-color: #66aaff !important; }
+    
+    .build-row { background-color: #ffffff !important; }
+    body.darkmode .build-row { background-color: #2d3035 !important; color: #ccc; }
+    .build-row:hover { background-color: #f8f9fa !important; }
+    body.darkmode .build-row:hover { background-color: #3d4045 !important; }
+    
+    /* Version badges */
+    .version-badge { 
+        padding: 4px 8px; 
+        border-radius: 12px; 
+        font-size: 11px; 
+        font-weight: bold; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px;
+    }
+    .version-badge.win11 { background-color: #0078d4; color: white; }
+    .version-badge.win10 { background-color: #ff8c00; color: white; }
+    .version-badge.historical { background-color: #6c757d; color: white; }
+    body.darkmode .version-badge.win11 { background-color: #106ebe; }
+    body.darkmode .version-badge.win10 { background-color: #cc7000; }
+    body.darkmode .version-badge.historical { background-color: #5a6268; }
     
     /* Snelfilter knoppen styling */
     .filter-container { margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
@@ -2072,7 +2234,7 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
     <div id="KBMapping" class="tabcontent" style="display:none">
         <h2>KB Mapping Database Overview</h2>
         <div class="kb-status-box">
-            <strong>Database Status:</strong> $(if ($KBMappingForHTML.Success) { "<span style='color:green;'>✓ Beschikbaar</span>" } else { "<span style='color:red;'>✗ Niet beschikbaar</span>" })<br>
+            <strong>Database Status:</strong> $(if ($KBMappingForHTML.Success) { "<span style='color:green;'>OK Beschikbaar</span>" } else { "<span style='color:red;'>X Niet beschikbaar</span>" })<br>
             <strong>Bron Methode:</strong> $($KBMappingForHTML.Method)<br>
             <strong>Totaal Entries:</strong> $($KBMappingForHTML.TotalEntries)<br>
             <strong>Laatste Update:</strong> $($KBMappingForHTML.LastUpdated)
@@ -2080,30 +2242,96 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         </div>
         
         $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
+            $warningsHtml = ""
+            $previewHtml = ""
+            
+            # Toon warnings
+            if ($KBMappingForHTML.Data.warnings) {
+                $warningsHtml = "<div class='kb-warnings'>
+                    <h3>WARNING Belangrijke Meldingen</h3>"
+                foreach ($warning in $KBMappingForHTML.Data.warnings.PSObject.Properties) {
+                    $warningsHtml += "<div style='margin:5px 0;'><strong>$($warning.Name):</strong> $($warning.Value)</div>"
+                }
+                $warningsHtml += "</div>"
+            }
+            
+            # Toon preview informatie
+            if ($KBMappingForHTML.Data.preview) {
+                $previewHtml = "<div class='kb-preview'>
+                    <h3>PREVIEW Aankomende Updates</h3>"
+                foreach ($previewPeriod in $KBMappingForHTML.Data.preview.PSObject.Properties) {
+                    $previewData = $previewPeriod.Value
+                    $previewHtml += "<div style='margin:10px 0;'><strong>$($previewPeriod.Name.Replace('_', ' ')):</strong><br>"
+                    if ($previewData.release_date) {
+                        $previewHtml += "Release: $($previewData.release_date)<br>"
+                    }
+                    if ($previewData.type) {
+                        $previewHtml += "Type: $($previewData.type)<br>"
+                    }
+                    foreach ($item in $previewData.PSObject.Properties) {
+                        if ($item.Name -notin @('release_date', 'type')) {
+                            if ($item.Value -is [PSCustomObject]) {
+                                $previewHtml += "- $($item.Name): Build $($item.Value.build) &rArr; $($item.Value.kb)"
+                                if ($item.Value.note) { $previewHtml += " ($($item.Value.note))" }
+                                $previewHtml += "<br>"
+                            } else {
+                                $previewHtml += "- $($item.Name): $($item.Value)<br>"
+                            }
+                        }
+                    }
+                    $previewHtml += "</div>"
+                }
+                $previewHtml += "</div>"
+            }
+            
+            "$warningsHtml$previewHtml"
+        })
+        
+        $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
             $kbEntries = @()
             
             # Verwerk Windows 11 mappings
             if ($KBMappingForHTML.Data.mappings.windows11) {
-                foreach ($build in ($KBMappingForHTML.Data.mappings.windows11.PSObject.Properties.Name | Sort-Object)) {
-                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11.$build
-                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 11 $($kbInfo.version)</td></tr>"
+                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11.$baseBuild
+                    
+                    # Specifieke builds (indien beschikbaar)
+                    if ($kbInfo.builds) {
+                        foreach ($specificBuild in ($kbInfo.builds.PSObject.Properties.Name | Sort-Object -Descending)) {
+                            $buildInfo = $kbInfo.builds.$specificBuild
+                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win11'>Windows 11 $($kbInfo.version)</span></td></tr>"
+                        }
+                    } else {
+                        # Fallback voor hoofdbuild als er geen specifieke builds zijn
+                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win11'>Windows 11 $($kbInfo.version)</span></td></tr>"
+                    }
                 }
             }
             
             # Verwerk Windows 10 mappings
             if ($KBMappingForHTML.Data.mappings.windows10) {
-                foreach ($build in ($KBMappingForHTML.Data.mappings.windows10.PSObject.Properties.Name | Sort-Object)) {
-                    $kbInfo = $KBMappingForHTML.Data.mappings.windows10.$build
-                    $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>Windows 10 $($kbInfo.version)</td></tr>"
+                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows10.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows10.$baseBuild
+                    
+                    # Specifieke builds (indien beschikbaar)
+                    if ($kbInfo.builds) {
+                        foreach ($specificBuild in ($kbInfo.builds.PSObject.Properties.Name | Sort-Object -Descending)) {
+                            $buildInfo = $kbInfo.builds.$specificBuild
+                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win10'>Windows 10 $($kbInfo.version)</span></td></tr>"
+                        }
+                    } else {
+                        # Fallback voor hoofdbuild als er geen specifieke builds zijn
+                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win10'>Windows 10 $($kbInfo.version)</span></td></tr>"
+                    }
                 }
             }
             
             # Verwerk Historical mappings
             if ($KBMappingForHTML.Data.mappings.historical) {
                 foreach ($year in ($KBMappingForHTML.Data.mappings.historical.PSObject.Properties.Name | Sort-Object -Descending)) {
-                    foreach ($build in ($KBMappingForHTML.Data.mappings.historical.$year.PSObject.Properties.Name | Sort-Object)) {
+                    foreach ($build in ($KBMappingForHTML.Data.mappings.historical.$year.PSObject.Properties.Name | Sort-Object -Descending)) {
                         $kbInfo = $KBMappingForHTML.Data.mappings.historical.$year.$build
-                        $kbEntries += "<tr><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.date)</td><td>Historical ($year)</td></tr>"
+                        $kbEntries += "<tr class='build-row'><td>$build</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.date)</td><td>$year</td><td><span class='version-badge historical'>Historical</span></td></tr>"
                     }
                 }
             }
@@ -2113,8 +2341,9 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                     <tr>
                         <th>Build Number</th>
                         <th>KB Number</th>
-                        <th>Update Title</th>
+                        <th>Update Title/Description</th>
                         <th>Release Date</th>
+                        <th>Period</th>
                         <th>OS Version</th>
                     </tr>
                 </thead>
@@ -2252,9 +2481,30 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         document.getElementById("KBMapping").style.display = "block";
         document.getElementsByClassName("tablinks")[2].className += " active";
         
-        // Initialiseer DataTable voor KB Mapping
+        // Initialiseer DataTable voor KB Mapping (zonder groep headers)
         if (typeof initializeDataTable === 'function') {
-            initializeDataTable('kbMappingTable');
+            if (`$.fn.DataTable.isDataTable('#kbMappingTable')) {
+                `$('#kbMappingTable').DataTable().destroy();
+            }
+            `$('#kbMappingTable').DataTable({
+                "responsive": true,
+                "pageLength": 25,
+                "order": [[ 5, "desc" ], [ 0, "desc" ]], // Sorteer op Windows versie, dan build
+                "language": {
+                    "search": "Zoeken:",
+                    "lengthMenu": "Toon _MENU_ regels",
+                    "info": "Toon _START_ tot _END_ van _TOTAL_ regels",
+                    "infoEmpty": "Geen gegevens beschikbaar",
+                    "infoFiltered": "(gefilterd uit _MAX_ totaal regels)",
+                    "paginate": {
+                        "first": "Eerste",
+                        "last": "Laatste",
+                        "next": "Volgende", 
+                        "previous": "Vorige"
+                    },
+                    "emptyTable": "Geen gegevens beschikbaar in de tabel"
+                }
+            });
         }
         
         // Reset grafiek naar alle klanten zonder het tab te veranderen
@@ -2291,11 +2541,47 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         chart.options.plugins.title.text = 'Alle klanten';
         chart.update();
     }
-    
+
+    // Functie om alle klanten te tonen
+    function showAllCustomers() {
+        // Verberg alle tabcontent
+        var tabcontent = document.getElementsByClassName("tabcontent");
+        for (var i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        
+        // Verwijder active class van alle tabs
+        var tablinks = document.getElementsByClassName("tablinks");
+        for (var i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        
+        // Activeer "Alle klanten" tab
+        document.getElementsByClassName("tablinks")[0].className += " active";
+        
+        // Reset grafiek naar alle klanten
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [
+            $ChartDatasets
+        ];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
+    }
+
     // Initialiseer de pagina bij het laden
     window.onload = function() {
         showAllCustomers();
     }
+    
+    // Direct uitvoeren na script load als backup
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wacht even totdat alles geladen is
+        setTimeout(function() {
+            if (typeof showAllCustomers === 'function') {
+                showAllCustomers();
+            }
+        }, 100);
+    });
 </script>
 </body>
 </html>
@@ -2310,87 +2596,69 @@ Write-Host "HTML rapport gegenereerd: $HtmlPath" -ForegroundColor Green
 if ($config.autoOpenHtmlReport -eq $true) {
     Write-Host "Openen van rapport in standaard webbrowser..." -ForegroundColor Cyan
     try {
-        if ((Test-Path $HtmlPath -PathType Leaf) -and ($HtmlPath.ToLower().EndsWith(".html")))
-        {
-            Start-Process $HtmlPath
-            Write-Host "Rapport succesvol geopend in webbrowser." -ForegroundColor Green
-        }
-        else {
-            Write-Warning "Het HTML rapportbestand bestaat niet: $HtmlPath"
-            Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
-        }
+        Start-Process $HtmlPath
+        Write-Host "Rapport geopend in standaard webbrowser." -ForegroundColor Green
+    } catch {
+        Write-Warning "Kon rapport niet automatisch openen: $_"
     }
-    catch {
-        Write-Warning "Kon het rapport niet automatisch openen: $($_.Exception.Message)"
-        Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Yellow
-    }
-}
-else {
+} else {
     Write-Host "Automatisch openen van rapport is uitgeschakeld in configuratie." -ForegroundColor Yellow
     Write-Host "U kunt het rapport handmatig openen via: $HtmlPath" -ForegroundColor Cyan
 }
 
 Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in de exports directory." -ForegroundColor Green
-###############################################################
-# BACKUP LOGIC: Zip exports, archive, config/credentials
-###############################################################
 
+# === BACKUP SECTIE ===
+Write-Host "`n=== BACKUP PROCES ===" -ForegroundColor Magenta
 
-# Backup root and subfolders from config
-$BackupRoot = "./$($config.backup.backupRoot)"
-$BackupExportDir = Join-Path $BackupRoot $config.backup.exportBackupSubfolder
-$BackupArchiveDir = Join-Path $BackupRoot $config.backup.archiveBackupSubfolder
-$BackupConfigDir = Join-Path $BackupRoot $config.backup.configBackupSubfolder
-
-# Ensure backup folders exist
-foreach ($dir in @($BackupRoot, $BackupExportDir, $BackupArchiveDir, $BackupConfigDir)) {
-    if (-not (Test-Path -Path $dir -PathType Container)) {
-        New-Item -Path $dir -ItemType Directory | Out-Null
+if ($config.backup.enabled -eq $true) {
+    # Maak backup directories aan
+    $BackupBaseDir = ".\backup"
+    $BackupExportDir = "$BackupBaseDir\export_backup"
+    $BackupArchiveDir = "$BackupBaseDir\archive_backup"
+    $BackupConfigDir = "$BackupBaseDir\config_backup"
+    
+    @($BackupBaseDir, $BackupExportDir, $BackupArchiveDir, $BackupConfigDir) | ForEach-Object {
+        if (-not (Test-Path $_)) { New-Item -Path $_ -ItemType Directory -Force | Out-Null }
     }
-}
 
-# Helper: Create zip and enforce retention
-function New-ZipBackup {
-    param(
-        [string]$SourcePath,
-        [string]$BackupFolder,
-        [string]$BackupPrefix,
-        [int]$RetentionCount
-    )
-    $timestamp = Get-Date -Format "yyyyMMdd"
-    $zipName = "$BackupPrefix-$timestamp.zip"
-    $zipPath = Join-Path $BackupFolder $zipName
-    Compress-Archive -Path $SourcePath -DestinationPath $zipPath -Force
-    # Retention: Remove oldest if over limit
-    $zips = Get-ChildItem -Path $BackupFolder -Filter "$BackupPrefix-*.zip" | Sort-Object LastWriteTime -Descending
-    if ($zips.Count -gt $RetentionCount) {
-        $zipsToRemove = $zips | Select-Object -Skip $RetentionCount
-        foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+    # Backup van exports
+    if (Test-Path ".\$($config.exportDirectory)") {
+        $ExportZipPath = "$BackupExportDir\export-$(Get-Date -Format 'yyyyMMdd').zip"
+        Compress-Archive -Path ".\$($config.exportDirectory)\*" -DestinationPath $ExportZipPath -Force
+        
+        # Behoud alleen de laatste X backups
+        $zips = Get-ChildItem -Path $BackupExportDir -Filter "export-*.zip" | Sort-Object LastWriteTime -Descending
+        if ($zips.Count -gt $config.backup.exportBackupRetention) {
+            $zipsToRemove = $zips | Select-Object -Skip $config.backup.exportBackupRetention
+            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+        }
+        Write-Host "Backup gemaakt: $ExportZipPath" -ForegroundColor Green
     }
-    Write-Host "Backup gemaakt: $zipPath" -ForegroundColor Green
-}
 
-# Export backup
-if ($config.backup.enableExportBackup -eq $true) {
-    $ExportSource = "$ExportDir/*"
-    New-ZipBackup -SourcePath $ExportSource -BackupFolder $BackupExportDir -BackupPrefix "export" -RetentionCount $config.backup.exportBackupRetention
-}
+    # Backup van archive
+    if (Test-Path ".\archive") {
+        $ArchiveZipPath = "$BackupArchiveDir\archive-$(Get-Date -Format 'yyyyMMdd').zip"
+        Compress-Archive -Path ".\archive\*" -DestinationPath $ArchiveZipPath -Force
+        
+        # Behoud alleen de laatste X backups
+        $zips = Get-ChildItem -Path $BackupArchiveDir -Filter "archive-*.zip" | Sort-Object LastWriteTime -Descending
+        if ($zips.Count -gt $config.backup.archiveBackupRetention) {
+            $zipsToRemove = $zips | Select-Object -Skip $config.backup.archiveBackupRetention
+            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+        }
+        Write-Host "Backup gemaakt: $ArchiveZipPath" -ForegroundColor Green
+    }
 
-# Archive backup
-if ($config.backup.enableArchiveBackup -eq $true) {
-    $ArchiveSource = "$ArchiveDir/*"
-    New-ZipBackup -SourcePath $ArchiveSource -BackupFolder $BackupArchiveDir -BackupPrefix "archive" -RetentionCount $config.backup.archiveBackupRetention
-}
-
-# Config/Credentials backup
-if ($config.backup.enableConfigBackup -eq $true) {
-    $ConfigFiles = @()
-    if (Test-Path -Path "./config.json" -PathType Leaf) { $ConfigFiles += "./config.json" }
-    if (Test-Path -Path "./credentials.json" -PathType Leaf) { $ConfigFiles += "./credentials.json" }
-    if ($ConfigFiles.Count -gt 0) {
-        $ConfigZipName = "configcreds-$(Get-Date -Format 'yyyyMMdd').zip"
-        $ConfigZipPath = Join-Path $BackupConfigDir $ConfigZipName
-        Compress-Archive -Path $ConfigFiles -DestinationPath $ConfigZipPath -Force
+    # Backup van configuratie bestanden
+    $ConfigFiles = @("config.json", "credentials.json", "_config.json", "_credentials.json", "kb-mapping.json")
+    $ConfigFilesToBackup = $ConfigFiles | Where-Object { Test-Path $_ }
+    
+    if ($ConfigFilesToBackup.Count -gt 0) {
+        $ConfigZipPath = "$BackupConfigDir\configcreds-$(Get-Date -Format 'yyyyMMdd').zip"
+        Compress-Archive -Path $ConfigFilesToBackup -DestinationPath $ConfigZipPath -Force
+        
+        # Behoud alleen de laatste X backups
         $zips = Get-ChildItem -Path $BackupConfigDir -Filter "configcreds-*.zip" | Sort-Object LastWriteTime -Descending
         if ($zips.Count -gt $config.backup.configBackupRetention) {
             $zipsToRemove = $zips | Select-Object -Skip $config.backup.configBackupRetention
@@ -2401,3 +2669,4 @@ if ($config.backup.enableConfigBackup -eq $true) {
 }
 
 Write-Host "Backups voltooid en opgeslagen in de backup directory." -ForegroundColor Cyan
+    

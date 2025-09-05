@@ -10,7 +10,7 @@
   "preview": {
     "september_2025": {
       "release_date": "2025-09-09",
-      "type": "Minor Update",
+      "type": "Update",
       "windows11_24h2": {
         "build": "26100.5074",
         "kb": "KB5065522"
@@ -43,7 +43,7 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Minor Update"
+            "description": "September 2025 Update"
           },
           "26100.2033": {
             "kb": "KB5064081",
@@ -77,7 +77,7 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Minor Update"
+            "description": "September 2025 Update"
           },
           "22631.4169": {
             "kb": "KB5063878",
@@ -98,7 +98,7 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Minor Update"
+            "description": "September 2025 Update"
           },
           "22621.4169": {
             "kb": "KB5063878",
@@ -129,7 +129,7 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Minor Update - Last updates before EOL"
+            "description": "September 2025 Update - Last updates before EOL"
           },
           "19045.4955": {
             "kb": "KB5063878",
@@ -151,7 +151,7 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Minor Update - Last updates before EOL"
+            "description": "September 2025 Update - Last updates before EOL"
           }
         }
       },
