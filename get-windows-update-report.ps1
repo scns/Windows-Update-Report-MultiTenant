@@ -649,6 +649,89 @@ function Get-CleanUpdateIdentifier {
     return ""
 }
 
+# Functie om missing updates te bepalen op basis van KB database
+function Get-MissingUpdatesFromKBDatabase {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$CurrentOSVersion,
+        [object]$KBMappingCache
+    )
+    
+    $missingKBs = @()
+    
+    try {
+        # Parse OS versie
+        if ($CurrentOSVersion -notmatch '10\.0\.(\d+)\.(\d+)') {
+            Write-Verbose "Could not parse OS version: $CurrentOSVersion"
+            return @()
+        }
+        
+        $majorBuild = $matches[1]
+        $minorBuild = [int]$matches[2]
+        $currentBuildString = "$majorBuild.$minorBuild"
+        
+        # Bepaal Windows versie
+        $isWindows11 = [int]$majorBuild -ge 22000
+        $windowsVersion = if ($isWindows11) { "windows11" } else { "windows10" }
+        
+        # Toegang tot KB mapping
+        if (-not $KBMappingCache -or -not $KBMappingCache.mappings -or -not $KBMappingCache.mappings.$windowsVersion) {
+            Write-Verbose "KB mapping cache not available for $windowsVersion"
+            return @()
+        }
+        
+        $versionMappings = $KBMappingCache.mappings.$windowsVersion
+        
+        # Zoek de juiste major build mapping
+        if (-not $versionMappings.$majorBuild) {
+            Write-Verbose "No KB mapping found for build $majorBuild"
+            return @()
+        }
+        
+        $buildMapping = $versionMappings.$majorBuild
+        
+        # Check of er specifieke build mappings zijn
+        if ($buildMapping.builds) {
+            $allBuilds = @()
+            
+            # Verzamel alle builds en sorteer op minor versie
+            foreach ($buildKey in $buildMapping.builds.PSObject.Properties.Name) {
+                if ($buildKey -match "$majorBuild\.(\d+)") {
+                    $allBuilds += @{
+                        Build = $buildKey
+                        MinorVersion = [int]$matches[1]
+                        KB = $buildMapping.builds.$buildKey.kb
+                        Date = $buildMapping.builds.$buildKey.date
+                    }
+                }
+            }
+            
+            # Sorteer builds op minor versie (oplopend)
+            $sortedBuilds = $allBuilds | Sort-Object MinorVersion
+            
+            # Vind de hoogste build die hoger is dan huidige build
+            $targetBuilds = $sortedBuilds | Where-Object { $_.MinorVersion -gt $minorBuild }
+            
+            # Verzamel unieke KB nummers van alle hogere builds
+            $uniqueKBs = @()
+            foreach ($build in $targetBuilds) {
+                if ($build.KB -and $uniqueKBs -notcontains $build.KB) {
+                    $uniqueKBs += $build.KB
+                }
+            }
+            
+            $missingKBs = $uniqueKBs
+            
+            Write-Verbose "Current build: $currentBuildString, Found $($targetBuilds.Count) newer builds, Missing KBs: $($missingKBs -join ', ')"
+        }
+        
+    } catch {
+        Write-Verbose "Error in Get-MissingUpdatesFromKBDatabase: $($_.Exception.Message)"
+    }
+    
+    return $missingKBs
+}
+
 # Onderdruk Microsoft Graph statusberichten
 $env:POWERSHELL_TELEMETRY_OPTOUT = "1"
 $ProgressPreference = "SilentlyContinue"
@@ -1027,75 +1110,22 @@ foreach ($cred in $data.LoginCredentials) {
                             $MissingUpdates = @()  # Laat leeg voor up-to-date machines
                             $UpdateStatus = "Up to date"
                             
-                            # Voor machines die recent hebben gesynchroniseerd, controleer of ze de nieuwste KB hebben
+                            # Voor machines die recent hebben gesynchroniseerd, controleer via KB database
                             if ($OSVersion -and $OSVersion -match '10\.0\.(\d+)\.(\d+)') {
                                 $currentBuild = "$($matches[1]).$($matches[2])"
-                                $majorBuild = $matches[1]
-                                $minorBuild = [int]$matches[2]
                                 
-                                # Bepaal verwachte KB op basis van Windows versie en huidige datum
-                                $expectedKB = $null
-                                $isLatest = $false
+                                # Gebruik KB database om missing updates te bepalen
+                                $kbMappingCache = $Global:CachedKBMapping
+                                $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $OSVersion -KBMappingCache $kbMappingCache
                                 
-                                # Check voor Windows 11 builds
-                                if ([int]$majorBuild -ge 22000) {
-                                    switch ($majorBuild) {
-                                        "26100" { 
-                                            # Windows 11 24H2 - September 2025 minor update verwacht
-                                            $expectedKB = "KB5065522"
-                                            $expectedBuild = "26100.5074"
-                                            $isLatest = ($minorBuild -ge 5074)
-                                        }
-                                        "22631" { 
-                                            # Windows 11 23H2 - September 2025 minor update verwacht
-                                            $expectedKB = "KB5065522"
-                                            $expectedBuild = "22631.4249"
-                                            $isLatest = ($minorBuild -ge 4249)
-                                        }
-                                        "22621" { 
-                                            # Windows 11 22H2 - September 2025 minor update verwacht
-                                            $expectedKB = "KB5065522"
-                                            $expectedBuild = "22621.4249"
-                                            $isLatest = ($minorBuild -ge 4249)
-                                        }
-                                        default {
-                                            # Andere Windows 11 builds - Augustus 2025 als minimum
-                                            $expectedKB = "KB5063878"
-                                            $isLatest = ($minorBuild -ge 4000)  # Ruime schatting
-                                        }
-                                    }
-                                }
-                                # Check voor Windows 10 builds
-                                else {
-                                    switch ($majorBuild) {
-                                        "19045" { 
-                                            # Windows 10 22H2 - Laatste updates voor EOL oktober 2025
-                                            $expectedKB = "KB5065522"
-                                            $expectedBuild = "19045.5073"
-                                            $isLatest = ($minorBuild -ge 5073)
-                                        }
-                                        "19044" { 
-                                            # Windows 10 21H2 - Laatste updates voor EOL
-                                            $expectedKB = "KB5065522"
-                                            $expectedBuild = "19044.5073"
-                                            $isLatest = ($minorBuild -ge 5073)
-                                        }
-                                        default {
-                                            # Andere Windows 10 builds - Augustus 2025 als minimum
-                                            $expectedKB = "KB5063878"
-                                            $isLatest = ($minorBuild -ge 4900)  # Ruime schatting
-                                        }
-                                    }
-                                }
-                                
-                                if (-not $isLatest -and $expectedKB) {
-                                    $ActualMissingUpdates += $expectedKB
-                                    if ($expectedBuild) {
-                                        $MissingUpdates = @("Windows Update status: $expectedKB update beschikbaar (huidig: $currentBuild, verwacht: $expectedBuild)")
-                                    } else {
-                                        $MissingUpdates = @("Windows Update status: $expectedKB update beschikbaar (huidig: $currentBuild)")
-                                    }
+                                if ($missingKBsFromDB.Count -gt 0) {
+                                    # Machine heeft updates nodig volgens KB database
+                                    $ActualMissingUpdates += $missingKBsFromDB
                                     $UpdateStatus = "Update beschikbaar"
+                                    Write-Verbose "Build $currentBuild needs updates: $($missingKBsFromDB -join ', ')"
+                                } else {
+                                    # Geen missing updates gevonden in KB database
+                                    Write-Verbose "Build $currentBuild is up-to-date according to KB database"
                                 }
                             }
                         } elseif ($DaysSinceSync -le 7) {
@@ -1107,11 +1137,17 @@ foreach ($cred in $data.LoginCredentials) {
                         }
                     }
                     
-                    # Bepaal het aantal missing updates op basis van werkelijke update lijst
+                    # Bepaal het aantal missing updates op basis van unieke KB's in de lijst
                     $UpdateCount = if ($UpdateStatus -in @("Up to date", "Waarschijnlijk up to date")) { 
                         0 
                     } elseif ($ActualMissingUpdates -and $ActualMissingUpdates.Count -gt 0) { 
-                        $ActualMissingUpdates.Count 
+                        # Tel unieke KB nummers
+                        $uniqueKBs = if ($ActualMissingUpdates -is [System.Array]) { 
+                            $ActualMissingUpdates | Select-Object -Unique
+                        } else { 
+                            @($ActualMissingUpdates)
+                        }
+                        $uniqueKBs.Count
                     } else { 
                         1  # Fallback voor onbekende status
                     }
@@ -1210,46 +1246,33 @@ foreach ($cred in $data.LoginCredentials) {
                                 $majorCurrentBuild = if ($fullCurrentBuild -match '^(\d+)\.') { $matches[1] } else { $currentBuild }
                                 $majorLatestBuild = if ($fullLatestBuild -match '^(\d+)\.') { $matches[1] } else { $latestBuild }
                                 
-                                # Haal de nieuwste KB update informatie online op
-                                Write-Verbose "Looking up KB information for build $majorCurrentBuild -> $majorLatestBuild"
-                                $KBInfo = Get-LatestKBUpdate -CurrentBuild $majorCurrentBuild -TargetBuild $majorLatestBuild -Config $config
+                                # Gebruik KB database om missing updates te bepalen
+                                Write-Verbose "Looking up KB information for OS version: $($result.OSVersion)"
+                                $kbMappingCache = $Global:CachedKBMapping
+                                $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $result.OSVersion -KBMappingCache $kbMappingCache
                                 
-                                if ($KBInfo.Success -and $KBInfo.UpdateTitle) {
-                                    # Extract alleen KB nummer uit UpdateTitle
-                                    $cleanKB = Get-CleanUpdateIdentifier -UpdateDisplayName $KBInfo.UpdateTitle
-                                    if ($cleanKB) {
-                                        $newResult.ActualMissingUpdates += $cleanKB
-                                    }
-                                    $newResult.KBMethod = $KBInfo.Method
-                                    Write-Verbose "Found KB info via $($KBInfo.Method): $($KBInfo.UpdateTitle)"
-                                } elseif ($buildDifference -gt 100) {
-                                    # Grote build verschillen - geen specifieke KB beschikbaar
-                                    # Laat dit leeg voor een cleaner display
-                                    $newResult.KBMethod = "Estimated"
-                                } elseif ($buildDifference -gt 50) {
-                                    # Matige build verschillen - geen specifieke KB beschikbaar  
-                                    # Laat dit leeg voor een cleaner display
-                                    $newResult.KBMethod = "Estimated"
+                                if ($missingKBsFromDB.Count -gt 0) {
+                                    $newResult.ActualMissingUpdates += $missingKBsFromDB
+                                    $newResult.KBMethod = "KB Database"
+                                    Write-Verbose "Found missing KBs via KB Database: $($missingKBsFromDB -join ', ')"
                                 } else {
-                                    # Kleinere build verschillen - probeer een geschat KB nummer te genereren
-                                    $CurrentDate = Get-Date
-                                    $CurrentYear = $CurrentDate.Year
-                                    $KBPrefix = switch ($CurrentYear) {
-                                        2025 { "KB506" }
-                                        2024 { "KB504" } 
-                                        default { "KB506" }
-                                    }
-                                    $EstimatedKB = "$KBPrefix" + ([string]([int]$majorLatestBuild % 10000)).PadLeft(4, '0')
-                                    $newResult.ActualMissingUpdates += $EstimatedKB
-                                    $newResult.KBMethod = "Estimated"
+                                    # Geen updates gevonden in KB database
+                                    $newResult.KBMethod = "KB Database (up-to-date)"
+                                    Write-Verbose "No missing updates found in KB Database for $($result.OSVersion)"
                                 }
                             }
                         }
                     }
                     
-                    # Bepaal het aantal missing updates voor verouderde OS versie
+                    # Bepaal het aantal missing updates voor verouderde OS versie (unieke KB's)
                     $OSUpdateCount = if ($newResult.ActualMissingUpdates -and $newResult.ActualMissingUpdates.Count -gt 0) { 
-                        $newResult.ActualMissingUpdates.Count 
+                        # Tel unieke KB nummers
+                        $uniqueKBs = if ($newResult.ActualMissingUpdates -is [System.Array]) { 
+                            $newResult.ActualMissingUpdates | Select-Object -Unique
+                        } else { 
+                            @($newResult.ActualMissingUpdates)
+                        }
+                        $uniqueKBs.Count
                     } else { 
                         1  # Minimaal één update voor verouderde OS versie
                     }
@@ -1300,12 +1323,13 @@ foreach ($cred in $data.LoginCredentials) {
         $MissingUpdatesDisplay = ""
         
         if ($_.ActualMissingUpdates -and $_.ActualMissingUpdates.Count -gt 0) {
-            # Er zijn echte KB updates - toon deze
-            $MissingUpdatesDisplay = if ($_.ActualMissingUpdates -is [System.Array]) { 
-                $_.ActualMissingUpdates -join '; '
+            # Er zijn echte KB updates - verwijder duplicaten en toon deze
+            $uniqueKBs = if ($_.ActualMissingUpdates -is [System.Array]) { 
+                $_.ActualMissingUpdates | Select-Object -Unique
             } else { 
-                $_.ActualMissingUpdates 
+                @($_.ActualMissingUpdates)
             }
+            $MissingUpdatesDisplay = $uniqueKBs -join '; '
         } elseif ($_.MissingUpdates -and $_.MissingUpdates.Count -gt 0) {
             # Geen KB updates, maar wel status informatie - toon eerste status
             $MissingUpdatesDisplay = if ($_.MissingUpdates -is [System.Array]) { 
