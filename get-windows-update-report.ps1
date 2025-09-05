@@ -604,6 +604,51 @@ function Get-LatestKBUpdate {
     }
 }
 
+# Functie om alleen KB nummers te extraheren uit Windows Update displayName
+function Get-CleanUpdateIdentifier {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$UpdateDisplayName
+    )
+    
+    if (-not $UpdateDisplayName) {
+        return ""
+    }
+    
+    # Extract alleen KB nummers - meest voorkomende patroon
+    if ($UpdateDisplayName -match '(KB\d{7})') {
+        return $matches[1]
+    }
+    
+    # Voor updates zonder KB nummer - probeer datum patroon voor identificatie
+    if ($UpdateDisplayName -match '(\d{4}-\d{2})') {
+        return "$($matches[1]) Update"
+    }
+    
+    # Voor Defender updates zonder specifiek KB
+    if ($UpdateDisplayName -match 'Defender|Security Intelligence') {
+        return "Defender Update"
+    }
+    
+    # Voor .NET Framework updates
+    if ($UpdateDisplayName -match '\.NET.*?Framework') {
+        return ".NET Framework Update"
+    }
+    
+    # Voor Microsoft Edge updates
+    if ($UpdateDisplayName -match 'Microsoft Edge') {
+        return "Edge Update"
+    }
+    
+    # Voor Office updates
+    if ($UpdateDisplayName -match 'Microsoft Office') {
+        return "Office Update"
+    }
+    
+    # Als geen herkenbaar patroon - return lege string
+    return ""
+}
+
 # Onderdruk Microsoft Graph statusberichten
 $env:POWERSHELL_TELEMETRY_OPTOUT = "1"
 $ProgressPreference = "SilentlyContinue"
@@ -1044,7 +1089,7 @@ foreach ($cred in $data.LoginCredentials) {
                                 }
                                 
                                 if (-not $isLatest -and $expectedKB) {
-                                    $ActualMissingUpdates += "Update beschikbaar: $expectedKB"
+                                    $ActualMissingUpdates += $expectedKB
                                     if ($expectedBuild) {
                                         $MissingUpdates = @("Windows Update status: $expectedKB update beschikbaar (huidig: $currentBuild, verwacht: $expectedBuild)")
                                     } else {
@@ -1062,11 +1107,20 @@ foreach ($cred in $data.LoginCredentials) {
                         }
                     }
                     
+                    # Bepaal het aantal missing updates op basis van werkelijke update lijst
+                    $UpdateCount = if ($UpdateStatus -in @("Up to date", "Waarschijnlijk up to date")) { 
+                        0 
+                    } elseif ($ActualMissingUpdates -and $ActualMissingUpdates.Count -gt 0) { 
+                        $ActualMissingUpdates.Count 
+                    } else { 
+                        1  # Fallback voor onbekende status
+                    }
+                    
                     $ResultsArray += [PSCustomObject]@{
                         DeviceName = $DeviceName
                         MissingUpdates = $MissingUpdates
                         ActualMissingUpdates = $ActualMissingUpdates
-                        Count = if ($UpdateStatus -in @("Up to date", "Waarschijnlijk up to date")) { 0 } else { 1 }
+                        Count = $UpdateCount
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
@@ -1081,7 +1135,8 @@ foreach ($cred in $data.LoginCredentials) {
                     $ResultsArray += [PSCustomObject]@{
                         DeviceName = $Device.deviceName
                         MissingUpdates = @("Error: Kan Windows Update status niet controleren")
-                        Count = 1  # Error = niet up-to-date
+                        ActualMissingUpdates = @()
+                        Count = 1  # Error = één probleem item
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
@@ -1160,29 +1215,46 @@ foreach ($cred in $data.LoginCredentials) {
                                 $KBInfo = Get-LatestKBUpdate -CurrentBuild $majorCurrentBuild -TargetBuild $majorLatestBuild -Config $config
                                 
                                 if ($KBInfo.Success -and $KBInfo.UpdateTitle) {
-                                    $newResult.ActualMissingUpdates += $KBInfo.UpdateTitle
+                                    # Extract alleen KB nummer uit UpdateTitle
+                                    $cleanKB = Get-CleanUpdateIdentifier -UpdateDisplayName $KBInfo.UpdateTitle
+                                    if ($cleanKB) {
+                                        $newResult.ActualMissingUpdates += $cleanKB
+                                    }
                                     $newResult.KBMethod = $KBInfo.Method
                                     Write-Verbose "Found KB info via $($KBInfo.Method): $($KBInfo.UpdateTitle)"
                                 } elseif ($buildDifference -gt 100) {
-                                    # Grote build verschillen duiden op multiple missing updates
-                                    $newResult.ActualMissingUpdates += "Meerdere cumulative updates"
+                                    # Grote build verschillen - geen specifieke KB beschikbaar
+                                    # Laat dit leeg voor een cleaner display
                                     $newResult.KBMethod = "Estimated"
                                 } elseif ($buildDifference -gt 50) {
-                                    # Matige build verschillen
-                                    $newResult.ActualMissingUpdates += "Cumulative update vereist"
+                                    # Matige build verschillen - geen specifieke KB beschikbaar  
+                                    # Laat dit leeg voor een cleaner display
                                     $newResult.KBMethod = "Estimated"
                                 } else {
-                                    # Kleinere build verschillen - probeer generieke update info
+                                    # Kleinere build verschillen - probeer een geschat KB nummer te genereren
                                     $CurrentDate = Get-Date
-                                    $EstimatedMonth = $CurrentDate.ToString("yyyy-MM")
-                                    $newResult.ActualMissingUpdates += "$EstimatedMonth Cumulative Update"
+                                    $CurrentYear = $CurrentDate.Year
+                                    $KBPrefix = switch ($CurrentYear) {
+                                        2025 { "KB506" }
+                                        2024 { "KB504" } 
+                                        default { "KB506" }
+                                    }
+                                    $EstimatedKB = "$KBPrefix" + ([string]([int]$majorLatestBuild % 10000)).PadLeft(4, '0')
+                                    $newResult.ActualMissingUpdates += $EstimatedKB
                                     $newResult.KBMethod = "Estimated"
                                 }
                             }
                         }
                     }
                     
-                    $newResult.Count = 1  # Verouderde OS versie = niet up-to-date
+                    # Bepaal het aantal missing updates voor verouderde OS versie
+                    $OSUpdateCount = if ($newResult.ActualMissingUpdates -and $newResult.ActualMissingUpdates.Count -gt 0) { 
+                        $newResult.ActualMissingUpdates.Count 
+                    } else { 
+                        1  # Minimaal één update voor verouderde OS versie
+                    }
+                    
+                    $newResult.Count = $OSUpdateCount
                 }
                 
                 $UpdatedResults += $newResult
@@ -1211,29 +1283,43 @@ foreach ($cred in $data.LoginCredentials) {
                 DeviceName = "Geen toegang"
                 MissingUpdates = @("Error: Kan Windows Update informatie niet ophalen - mogelijk geen juiste permissions")
                 ActualMissingUpdates = @()
-                Count = 1  # Permission error = niet up-to-date
+                Count = 1  # Permission error = één probleem item
                 LastSeen = (Get-Date).ToString()
                 LoggedOnUsers = "N/A"
                 OSPlatform = "Windows"
                 OSVersion = "Onbekend" 
                 UpdateStatus = "Permission Error"
+                ComplianceStatus = "Error"
             })
         }
     }
 
     #Format the results into an array
     $ResultsTable = $Result.results | ForEach-Object {
-        $ActualMissingUpdates = if ($_.ActualMissingUpdates -is [System.Array]) { 
-            $_.ActualMissingUpdates -join '; '
-        } else { 
-            $_.ActualMissingUpdates 
+        # Probeer eerst ActualMissingUpdates (echte KB nummers), anders MissingUpdates (status info)
+        $MissingUpdatesDisplay = ""
+        
+        if ($_.ActualMissingUpdates -and $_.ActualMissingUpdates.Count -gt 0) {
+            # Er zijn echte KB updates - toon deze
+            $MissingUpdatesDisplay = if ($_.ActualMissingUpdates -is [System.Array]) { 
+                $_.ActualMissingUpdates -join '; '
+            } else { 
+                $_.ActualMissingUpdates 
+            }
+        } elseif ($_.MissingUpdates -and $_.MissingUpdates.Count -gt 0) {
+            # Geen KB updates, maar wel status informatie - toon eerste status
+            $MissingUpdatesDisplay = if ($_.MissingUpdates -is [System.Array]) { 
+                $_.MissingUpdates[0]  # Toon alleen de eerste status voor beknoptheid
+            } else { 
+                $_.MissingUpdates 
+            }
         }
         
         [PSCustomObject]@{
             Device = $_.DeviceName
             "Update Status" = if ($_.UpdateStatus) { $_.UpdateStatus } else { "Onbekend" }
             "Compliance Status" = if ($_.ComplianceStatus) { $_.ComplianceStatus } else { "Onbekend" }
-            "Missing Updates" = if ($ActualMissingUpdates) { $ActualMissingUpdates } else { "" }
+            "Missing Updates" = $MissingUpdatesDisplay
             "KB Method" = if ($_.KBMethod) { $_.KBMethod } else { "N/A" }
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
             "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
