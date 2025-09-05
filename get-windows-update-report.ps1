@@ -1024,7 +1024,7 @@ foreach ($cred in $data.LoginCredentials) {
                         $OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
                         
                         if ($DaysSinceSync -le 3) {
-                            $MissingUpdates = @("Windows Update status: Recent gesynchroniseerd (OS: $OSVersion), geen update problemen gedetecteerd")
+                            $MissingUpdates = @()  # Laat leeg voor up-to-date machines
                             $UpdateStatus = "Up to date"
                             
                             # Voor machines die recent hebben gesynchroniseerd, controleer of ze de nieuwste KB hebben
@@ -1099,7 +1099,7 @@ foreach ($cred in $data.LoginCredentials) {
                                 }
                             }
                         } elseif ($DaysSinceSync -le 7) {
-                            $MissingUpdates = @("Windows Update status: Gesynchroniseerd binnen een week (OS: $OSVersion)")
+                            $MissingUpdates = @()  # Laat leeg voor waarschijnlijk up-to-date machines
                             $UpdateStatus = "Waarschijnlijk up to date"
                         } else {
                             $MissingUpdates = @("Windows Update status: Niet recent gesynchroniseerd ($DaysSinceSync dagen) (OS: $OSVersion)")
