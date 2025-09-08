@@ -40,7 +40,7 @@ jobs:
 
       # Auto-assign priority labels based on keywords
       - name: 🚨 Auto assign priority labels
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const title = context.payload.pull_request?.title || context.payload.issue?.title || '';
@@ -105,7 +105,7 @@ jobs:
       # Auto-assign type labels for PRs based on file changes
       - name: 🔍 Analyze PR changes and assign type labels
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
