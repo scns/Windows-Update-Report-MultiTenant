@@ -2711,7 +2711,7 @@ Write-Host "`nScript voltooid! Alle rapporten zijn gegenereerd en beschikbaar in
 # === BACKUP SECTIE ===
 Write-Host "`n=== BACKUP PROCES ===" -ForegroundColor Magenta
 
-if ($config.backup.enabled -eq $true) {
+if ($config.backup.enableExportBackup -eq $true -or $config.backup.enableArchiveBackup -eq $true -or $config.backup.enableConfigBackup -eq $true) {
     # Maak backup directories aan
     $BackupBaseDir = ".\backup"
     $BackupExportDir = "$BackupBaseDir\export_backup"
@@ -2723,7 +2723,7 @@ if ($config.backup.enabled -eq $true) {
     }
 
     # Backup van exports
-    if (Test-Path ".\$($config.exportDirectory)") {
+    if ($config.backup.enableExportBackup -eq $true -and (Test-Path ".\$($config.exportDirectory)")) {
         $ExportZipPath = "$BackupExportDir\export-$(Get-Date -Format 'yyyyMMdd').zip"
         Compress-Archive -Path ".\$($config.exportDirectory)\*" -DestinationPath $ExportZipPath -Force
         
@@ -2731,13 +2731,16 @@ if ($config.backup.enabled -eq $true) {
         $zips = Get-ChildItem -Path $BackupExportDir -Filter "export-*.zip" | Sort-Object LastWriteTime -Descending
         if ($zips.Count -gt $config.backup.exportBackupRetention) {
             $zipsToRemove = $zips | Select-Object -Skip $config.backup.exportBackupRetention
-            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+            foreach ($z in $zipsToRemove) {
+                Write-Host "Verwijder oude export backup: $($z.FullName)" -ForegroundColor Yellow
+                Remove-Item $z.FullName -Force
+            }
         }
         Write-Host "Backup gemaakt: $ExportZipPath" -ForegroundColor Green
     }
 
     # Backup van archive
-    if (Test-Path ".\archive") {
+    if ($config.backup.enableArchiveBackup -eq $true -and (Test-Path ".\archive")) {
         $ArchiveZipPath = "$BackupArchiveDir\archive-$(Get-Date -Format 'yyyyMMdd').zip"
         Compress-Archive -Path ".\archive\*" -DestinationPath $ArchiveZipPath -Force
         
@@ -2745,26 +2748,34 @@ if ($config.backup.enabled -eq $true) {
         $zips = Get-ChildItem -Path $BackupArchiveDir -Filter "archive-*.zip" | Sort-Object LastWriteTime -Descending
         if ($zips.Count -gt $config.backup.archiveBackupRetention) {
             $zipsToRemove = $zips | Select-Object -Skip $config.backup.archiveBackupRetention
-            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+            foreach ($z in $zipsToRemove) {
+                Write-Host "Verwijder oude archive backup: $($z.FullName)" -ForegroundColor Yellow
+                Remove-Item $z.FullName -Force
+            }
         }
         Write-Host "Backup gemaakt: $ArchiveZipPath" -ForegroundColor Green
     }
 
     # Backup van configuratie bestanden
-    $ConfigFiles = @("config.json", "credentials.json", "_config.json", "_credentials.json", "kb-mapping.json")
-    $ConfigFilesToBackup = $ConfigFiles | Where-Object { Test-Path $_ }
-    
-    if ($ConfigFilesToBackup.Count -gt 0) {
-        $ConfigZipPath = "$BackupConfigDir\configcreds-$(Get-Date -Format 'yyyyMMdd').zip"
-        Compress-Archive -Path $ConfigFilesToBackup -DestinationPath $ConfigZipPath -Force
+    if ($config.backup.enableConfigBackup -eq $true) {
+        $ConfigFiles = @("config.json", "credentials.json", "_config.json", "_credentials.json", "kb-mapping.json")
+        $ConfigFilesToBackup = $ConfigFiles | Where-Object { Test-Path $_ }
         
-        # Behoud alleen de laatste X backups
-        $zips = Get-ChildItem -Path $BackupConfigDir -Filter "configcreds-*.zip" | Sort-Object LastWriteTime -Descending
-        if ($zips.Count -gt $config.backup.configBackupRetention) {
-            $zipsToRemove = $zips | Select-Object -Skip $config.backup.configBackupRetention
-            foreach ($z in $zipsToRemove) { Remove-Item $z.FullName -Force }
+        if ($ConfigFilesToBackup.Count -gt 0) {
+            $ConfigZipPath = "$BackupConfigDir\configcreds-$(Get-Date -Format 'yyyyMMdd').zip"
+            Compress-Archive -Path $ConfigFilesToBackup -DestinationPath $ConfigZipPath -Force
+            
+            # Behoud alleen de laatste X backups
+            $zips = Get-ChildItem -Path $BackupConfigDir -Filter "configcreds-*.zip" | Sort-Object LastWriteTime -Descending
+            if ($zips.Count -gt $config.backup.configBackupRetention) {
+                $zipsToRemove = $zips | Select-Object -Skip $config.backup.configBackupRetention
+                foreach ($z in $zipsToRemove) {
+                    Write-Host "Verwijder oude config backup: $($z.FullName)" -ForegroundColor Yellow
+                    Remove-Item $z.FullName -Force
+                }
+            }
+            Write-Host "Backup gemaakt: $ConfigZipPath" -ForegroundColor Green
         }
-        Write-Host "Backup gemaakt: $ConfigZipPath" -ForegroundColor Green
     }
 }
 
