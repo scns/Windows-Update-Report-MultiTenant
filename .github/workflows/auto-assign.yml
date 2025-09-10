@@ -30,17 +30,4 @@ jobs:
           assignees: scns
           numOfAssignee: 1
 
-      - name: 🏷️ Add "in-progress" label to assigned items
-        if: github.event.action != 'ready_for_review'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
-            if (issueNumber) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                labels: ['in-progress']
-              });
-            }
+    
