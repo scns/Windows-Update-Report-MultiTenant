@@ -32,9 +32,6 @@ autolabeler:
       - '/new/i'
 
 categories:
-  - title: "🗂️ KB Database Update"
-    labels:
-    - "kb-update"
   - title: "🚨 Major Release 🚨"
     labels:
       - "major-change"
@@ -44,6 +41,9 @@ categories:
   - title: "✨ New features"
     labels:
       - "new-feature"
+  - title: "🗂️ KB Database Update"
+    labels:
+    - "kb-update"
   - title: "🐛 Bug fixes"
     labels:
       - "bugfix"
