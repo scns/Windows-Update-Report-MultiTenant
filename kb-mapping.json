@@ -43,7 +43,13 @@
             "kb": "KB5065522",
             "date": "2025-09",
             "releaseDate": "2025-09-09",
-            "description": "September 2025 Update"
+            "description": "September 2025 Preview Update"
+          },
+          "26100.6584": {
+            "kb": "KB5065426",
+            "date": "2025-09",
+            "releaseDate": "2025-09-09",
+            "description": "September 2025 Final Update"
           },
           "26100.4946": {
             "kb": "KB5063878",
