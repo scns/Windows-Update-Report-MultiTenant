@@ -1344,7 +1344,6 @@ foreach ($cred in $data.LoginCredentials) {
             "Update Status" = if ($_.UpdateStatus) { $_.UpdateStatus } else { "Onbekend" }
             "Compliance Status" = if ($_.ComplianceStatus) { $_.ComplianceStatus } else { "Onbekend" }
             "Missing Updates" = $MissingUpdatesDisplay
-            "KB Method" = if ($_.KBMethod) { $_.KBMethod } else { "N/A" }
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
             "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
             "LastSeen" = $_.LastSeen
