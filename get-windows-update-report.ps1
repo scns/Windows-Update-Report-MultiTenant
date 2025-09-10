@@ -1238,19 +1238,10 @@ foreach ($cred in $data.LoginCredentials) {
                         if ($currentBuild -match '^\d+$' -and $latestBuild -match '^\d+$') {
                             $buildDifference = [int]$latestBuild - [int]$currentBuild
                             if ($buildDifference -gt 0) {
-                                # Bepaal volledige build nummers voor Windows versie detectie
-                                $fullCurrentBuild = $result.OSVersion -replace '^.*\.(\d+\.\d+)$', '$1'
-                                $fullLatestBuild = $LatestOSVersion -replace '^.*\.(\d+\.\d+)$', '$1'
-                                
-                                # Extract major build (bijv. 26100 uit 26100.4652)
-                                $majorCurrentBuild = if ($fullCurrentBuild -match '^(\d+)\.') { $matches[1] } else { $currentBuild }
-                                $majorLatestBuild = if ($fullLatestBuild -match '^(\d+)\.') { $matches[1] } else { $latestBuild }
-                                
                                 # Gebruik KB database om missing updates te bepalen
                                 Write-Verbose "Looking up KB information for OS version: $($result.OSVersion)"
                                 $kbMappingCache = $Global:CachedKBMapping
                                 $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $result.OSVersion -KBMappingCache $kbMappingCache
-                                
                                 if ($missingKBsFromDB.Count -gt 0) {
                                     $newResult.ActualMissingUpdates += $missingKBsFromDB
                                     $newResult.KBMethod = "KB Database"
