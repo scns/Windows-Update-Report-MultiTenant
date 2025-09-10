@@ -8,27 +8,7 @@
     "next_patch_tuesday": "September 2025 Patch Tuesday: 9 september 2025"
   },
   "preview": {
-    "september_2025": {
-      "release_date": "2025-09-09",
-      "type": "Update",
-      "windows11_24h2": {
-        "build": "26100.5074",
-        "kb": "KB5065522"
-      },
-      "windows11_23h2": {
-        "build": "22631.4249", 
-        "kb": "KB5065522"
-      },
-      "windows11_22h2": {
-        "build": "22621.4249",
-        "kb": "KB5065522"
-      },
-      "windows10_22h2": {
-        "build": "19045.5073",
-        "kb": "KB5065522",
-        "note": "Laatste update voor EOL"
-      }
-    }
+   
   },
   "mappings": {
     "windows11": {
@@ -39,12 +19,6 @@
         "version": "24H2",
         "releaseDate": "2025-08-12",
         "builds": {
-          "26100.5074": {
-            "kb": "KB5065522",
-            "date": "2025-09",
-            "releaseDate": "2025-09-09",
-            "description": "September 2025 Preview Update"
-          },
           "26100.6584": {
             "kb": "KB5065426",
             "date": "2025-09",
