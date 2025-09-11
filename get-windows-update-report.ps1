@@ -22,15 +22,15 @@ De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met 
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
-2025-08-13
+2025-09-11
 
 .VERSIE
-3.0
+3.0.0
 #>
 
 #Versie-informatie
-    $ProjectVersion = "3.0"
-    $LastEditDate = "2025-08-13"
+    $ProjectVersion = "3.0.0"
+    $LastEditDate = "2025-09-11"
 
 # Import configuratie
     try {
