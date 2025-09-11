@@ -1720,7 +1720,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 default { "color: #6c757d;" }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'KB Method')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -1803,7 +1803,6 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>Update Status</th>
                     <th>Compliance Status</th>
                     <th>Missing Updates</th>
-                    <th>KB Method</th>
                     <th>OS Version</th>
                     <th>Count</th>
                     <th>LastSeen (UTC+$TimezoneOffsetHours)</th>
