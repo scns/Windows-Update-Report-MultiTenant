@@ -68,26 +68,6 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **CSV Export**: Compliance status opgenomen in alle export bestanden
 - **Dropdown Filters**: Compliance Status kolom heeft eigen dropdown filter
 
-### � **Backup & Archivering System**
-
-- **Automatische Backups**: Configureerbare backup van exports, archive en configuratiebestanden
-- **Retention Management**: Instelbare bewaarperiode per backup type (standaard 5 backups)
-- **Intelligente Cleanup**: Automatische verwijdering van oude backups met logging
-- **Separate Backup Types**:
-  - **Export Backup**: `backup/export_backup/` - Dagelijkse exports
-  - **Archive Backup**: `backup/archive_backup/` - Gearchiveerde bestanden  
-  - **Config Backup**: `backup/config_backup/` - Configuratie en credentials
-- **Granular Control**: Per backup type aan/uit te schakelen
-- **Status Logging**: Duidelijke feedback over backup creation en cleanup
-
-### �🕐 **Timezone Support**
-
-- **Configureerbare Offset**: Instelbare tijdzone via `timezoneOffsetHours` in config.json
-- **Robuuste Conversie**: Ondersteunt meerdere DateTime formaten voor maximale compatibiliteit
-- **UTC Detection**: Intelligente tijdzone detectie en conversie
-- **Visual Feedback**: HTML headers tonen tijdzone informatie (bijv. "LastSeen (UTC+2)")
-- **Accurate Calculations**: Verbeterde sync berekeningen met tijdzone correctie
-
 ### 🎨 **Theme Support**
 
 - **Dark/Light Mode**: Configureerbare standaard theme in config.json
