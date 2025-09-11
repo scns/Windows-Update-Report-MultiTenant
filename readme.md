@@ -9,6 +9,35 @@
 
 Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update en device compliance status voor meerdere tenants via Microsoft Graph. Het resultaat is een professioneel HTML-dashboard met filterbare tabellen, grafieken, compliance monitoring en gedetailleerde KB informatie.
 
+## 🔄 **Backup & Archivering System**
+
+- **Automatische Backups**: Configureerbare backup van exports, archive en configuratiebestanden
+- **Retention Management**: Instelbare bewaarperiode per backup type (standaard 5 backups)
+- **Intelligente Cleanup**: Automatische verwijdering van oude backups met logging
+- **Separate Backup Types**:
+  - **Export Backup**: `backup/export_backup/` - Dagelijkse exports
+  - **Archive Backup**: `backup/archive_backup/` - Gearchiveerde bestanden  
+  - **Config Backup**: `backup/config_backup/` - Configuratie en credentials
+- **Granular Control**: Per backup type aan/uit te schakelen
+- **Status Logging**: Duidelijke feedback over backup creation en cleanup
+
+## 🕐 **Timezone Support**
+
+- **Configureerbare Offset**: Instelbare tijdzone via `timezoneOffsetHours` in config.json
+- **Robuuste Conversie**: Ondersteunt meerdere DateTime formaten voor maximale compatibiliteit
+- **UTC Detection**: Intelligente tijdzone detectie en conversie
+- **Visual Feedback**: HTML headers tonen tijdzone informatie (bijv. "LastSeen (UTC+2)")
+- **Accurate Calculations**: Verbeterde sync berekeningen met tijdzone correctie
+
+## 🎯 Versie 3.0 Hoogtepunten
+
+- **🛡️ Device Compliance Integration**: Volledige Microsoft Graph compliance monitoring
+- **🔄 Intelligent Backup System**: Automatische backups met retention management  
+- **🎨 Modern UI**: Dark/Light theme support met streamlined interface
+- **🕐 Timezone Support**: Configureerbare tijdzone weergave voor accurate timestamps
+- **📦 Enhanced Configuration**: Uitgebreide configuratie-opties voor alle functionaliteiten
+- **🗂️ KB Database Caching**: Intelligent caching systeem voor KB mapping database
+
 ## 🚀 Hoofdfunctionaliteit
 
 - **Automatische module installatie**: Controleert en installeert automatisch benodigde PowerShell modules
@@ -39,13 +68,32 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **CSV Export**: Compliance status opgenomen in alle export bestanden
 - **Dropdown Filters**: Compliance Status kolom heeft eigen dropdown filter
 
-### 🕐 **Timezone Support**
+### � **Backup & Archivering System**
+
+- **Automatische Backups**: Configureerbare backup van exports, archive en configuratiebestanden
+- **Retention Management**: Instelbare bewaarperiode per backup type (standaard 5 backups)
+- **Intelligente Cleanup**: Automatische verwijdering van oude backups met logging
+- **Separate Backup Types**:
+  - **Export Backup**: `backup/export_backup/` - Dagelijkse exports
+  - **Archive Backup**: `backup/archive_backup/` - Gearchiveerde bestanden  
+  - **Config Backup**: `backup/config_backup/` - Configuratie en credentials
+- **Granular Control**: Per backup type aan/uit te schakelen
+- **Status Logging**: Duidelijke feedback over backup creation en cleanup
+
+### �🕐 **Timezone Support**
 
 - **Configureerbare Offset**: Instelbare tijdzone via `timezoneOffsetHours` in config.json
 - **Robuuste Conversie**: Ondersteunt meerdere DateTime formaten voor maximale compatibiliteit
 - **UTC Detection**: Intelligente tijdzone detectie en conversie
 - **Visual Feedback**: HTML headers tonen tijdzone informatie (bijv. "LastSeen (UTC+2)")
 - **Accurate Calculations**: Verbeterde sync berekeningen met tijdzone correctie
+
+### 🎨 **Theme Support**
+
+- **Dark/Light Mode**: Configureerbare standaard theme in config.json
+- **Browser Toggle**: Runtime switching tussen dark en light mode
+- **Consistent Styling**: Alle UI elementen ondersteunen beide themes
+- **Professional Design**: Moderne styling met optimale leesbaarheid
 
 ### 🎯 **Intelligente Update Detectie**
 
@@ -74,16 +122,17 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
   - Verouderde OS (oranje), Handmatige Controle (paars), Non-Compliant (unieke rode kleur)
 - **Filter Synchronisatie**: Automatische reset van conflicterende filters voor consistente ervaring
 - **Dark Theme Support**: Optimale zichtbaarheid in zowel light als dark browser themes
-- **Filter Counters**: Alle filter buttons tonen aantal machines per status
+- **Streamlined Table**: KB Method kolom verwijderd voor cleaner interface
+- **Export Functies**: Volledige tabel export en gefilterde export opties per klant
 
 ### 📊 **Enhanced Dashboard & Statistics**
 
 - **Globale Statistieken**: Overzicht van alle tenants met totalen en percentages
 - **Per-Client Statistieken**: Gedetailleerde breakdown per klant met visual cards
 - **Compliance Percentages**: Up-to-date percentages en compliance ratios
-- **Interactive Charts**: Grafische weergave van update status distributie
-- **Professional Styling**: Bootstrap-compatible styling voor professionele uitstraling
-- **Export Functies**: Volledige tabel export en gefilterde export opties
+- **Interactive Charts**: Chart.js grafieken met per-klant filtering
+- **Professional Styling**: Moderne UI met responsive design
+- **App Registration Monitoring**: Dedicated tab voor certificate expiry tracking
 
 ## 📋 Vereiste Microsoft Graph API Permissions
 
@@ -135,32 +184,103 @@ cd Windows-Update-Report-MultiTenant
 ### 2. Configuratie
 
 ```powershell
-# Kopieer template bestanden
+# Kopieer template bestanden (voor nieuwe installaties)
 Copy-Item "_config.json" "config.json"
 Copy-Item "_credentials.json" "credentials.json"
 
-# Pas configuratie aan (zie CONFIG-UITLEG.md voor details)
+# Pas configuratie aan
 notepad config.json
 notepad credentials.json
 ```
 
-### 3. App Registration Setup
+**Voor bestaande installaties:** Vergelijk je huidige config.json met _config.json om nieuwe opties toe te voegen.
+
+**📋 Uitgebreide credentials setup:** Zie [CREDENTIALS-SETUP.md](CREDENTIALS-SETUP.md) voor gedetailleerde instructies.
+
+## 🔄 Upgrade van v2.x naar v3.0
+
+Voor bestaande gebruikers zijn er enkele belangrijke wijzigingen:
+
+### Configuratie Updates
+
+```powershell
+# Backup je huidige configuratie
+Copy-Item "config.json" "config_backup.json"
+
+# Vergelijk met nieuwe template en voeg nieuwe opties toe
+# Nieuwe opties in v3.0:
+# - timezoneOffsetHours
+# - backup sectie (enableExportBackup, etc.)
+# - theme sectie
+# - kbMapping uitgebreid
+```
+
+### Nieuwe Features
+
+1. **Backup System**: Configureer automatische backups in config.json
+2. **Timezone Support**: Stel `timezoneOffsetHours` in voor je locatie
+3. **Theme Preference**: Kies tussen "light" en "dark" als standaard
+4. **Streamlined Interface**: KB Method kolom is verwijderd voor een cleanere UI
+
+### Backward Compatibility
+
+- Bestaande config.json bestanden blijven werken
+- Nieuwe features hebben veilige standaardinstellingen
+- Geen breaking changes in credentials.json formaat
+
+### 3. Azure App Registration Setup
 
 1. Ga naar [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
-2. Maak nieuwe App Registration aan
-3. Voeg de vereiste API permissions toe (zie lijst hierboven)
-4. Genereer client secret
-5. Vul `credentials.json` in met tenant ID, client ID en client secret per tenant
+2. Maak nieuwe App Registration aan per tenant/klant
+3. Voeg de vereiste API permissions toe:
+   - `DeviceManagementManagedDevices.Read.All`
+   - `DeviceManagementConfiguration.Read.All`
+   - `ThreatHunting.Read.All`
+   - `Device.Read.All`
+   - `Directory.Read.All`
+   - `Application.Read.All`
+4. **Grant admin consent** voor alle permissions
+5. Genereer client secret (noteer deze veilig!)
+6. Vul `credentials.json` in met tenant ID, client ID en client secret per klant
 
 ### 4. Eerste Run
 
 ```powershell
+# Start het script - automatische module installatie
 .\get-windows-update-report.ps1
 ```
 
 Het script installeert automatisch benodigde PowerShell modules en genereert het eerste rapport.
 
+### 5. Output Locaties
+
+- **HTML Dashboard**: `exports/Windows_Update_Overview.html`
+- **CSV Exports**: `exports/YYYYMMDD_KlantNaam_Windows_Update_report_*.csv`
+- **Archived Files**: `archive/` (oudere exports)
+- **Backups**: `backup/` (automatische backups)
+
 ## ⚙️ Configuratie Opties
+
+### Basis Configuratie
+
+```json
+{
+    "exportRetentionCount": 40,
+    "cleanupOldExports": true,
+    "exportDirectory": "exports",
+    "archiveDirectory": "archive",
+    "autoOpenHtmlReport": true,
+    "lastSeenDaysFilter": 0,
+    "timezoneOffsetHours": 2
+}
+```
+
+**Opties:**
+
+- `exportRetentionCount`: Aantal export bestanden om te bewaren (standaard: 40)
+- `cleanupOldExports`: Automatisch opruimen van oude exports (true/false)
+- `lastSeenDaysFilter`: Filter machines op laatste online tijd (0 = alle machines)
+- `autoOpenHtmlReport`: Automatisch openen van rapport in browser
 
 ### Timezone Configuration
 
@@ -170,34 +290,72 @@ Het script installeert automatisch benodigde PowerShell modules en genereert het
 }
 ```
 
-Opties:
+**Opties:**
 
 - **Nederland (zomer)**: `2` (UTC+2)
-- **Nederland (winter)**: `1` (UTC+1)
+- **Nederland (winter)**: `1` (UTC+1)  
 - **UTC tijd**: `0`
 - **US Eastern**: `-5` (UTC-5)
 
-### KB Mapping Cache
+### KB Mapping Database
 
 ```json
 {
     "kbMapping": {
-        "cacheValidMinutes": 30,
+        "kbMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
         "timeoutSeconds": 10,
-        "fallbackToLocalMapping": true
+        "cacheValidMinutes": 30,
+        "estimationThreshold": 1000,
+        "showEstimationLabels": true,
+        "fallbackToLocalMapping": true,
+        "estimationLabels": {
+            "buildDifference": "(geschat voor build {targetBuild})",
+            "noMapping": "(geschat)",
+            "oldMapping": "(verouderd)"
+        }
     }
 }
 ```
 
-### Export Management
+### Backup System
 
 ```json
 {
-    "exportRetentionCount": 40,
-    "cleanupOldExports": true,
-    "autoOpenHtmlReport": false
+    "backup": {
+        "enableExportBackup": true,
+        "enableArchiveBackup": true,
+        "enableConfigBackup": true,
+        "exportBackupRetention": 5,
+        "archiveBackupRetention": 5,
+        "configBackupRetention": 5,
+        "backupRoot": "backup",
+        "exportBackupSubfolder": "export_backup",
+        "archiveBackupSubfolder": "archive_backup",
+        "configBackupSubfolder": "config_backup"
+    }
 }
 ```
+
+**Backup Types:**
+
+- **Export Backup**: Dagelijkse backup van alle CSV exports
+- **Archive Backup**: Backup van gearchiveerde bestanden  
+- **Config Backup**: Backup van config.json, credentials.json, kb-mapping.json
+
+### Theme Configuration
+
+```json
+{
+    "theme": {
+        "default": "dark"
+    }
+}
+```
+
+**Opties:**
+
+- `"light"`: Light theme als standaard
+- `"dark"`: Dark theme als standaard
 
 ## 📁 Bestandsstructuur
 
@@ -247,6 +405,7 @@ Windows-Update-Report-MultiTenant/
 ## 📚 Documentatie Links
 
 - **[Configuratie Uitleg](CONFIG-UITLEG.md)** - Gedetailleerde uitleg van alle config opties
+- **[Credentials Setup](CREDENTIALS-SETUP.md)** - Stap-voor-stap Azure App Registration setup
 - **[KB Caching Info](KB-CACHING-INFO.md)** - KB mapping cache configuratie en troubleshooting
 - **[Security Policy](SECURITY.md)** - Beveiligingsbeleid en kwetsbaarheid rapportage
 - **[Contributing Guidelines](CONTRIBUTING.md)** - Richtlijnen voor bijdragen aan het project
@@ -596,7 +755,7 @@ Windows-Update-Report-MultiTenant/
 - **Smart suggestions**: Geeft praktische aanbevelingen op basis van build verschillen
 - **Multiple API support**: Device Management API met Threat Hunting fallback
 
-### �️ **KnowledgeBase Mapping Database & Intelligent Caching**
+### 🗂️ **KnowledgeBase Mapping Database & Intelligent Caching**
 
 - **Online KB database**: Uitgebreide externe database met Windows Update KB mappings
 - **Intelligent caching**: Downloads database eenmalig per sessie, cached voor 30 minuten (configureerbaar)
