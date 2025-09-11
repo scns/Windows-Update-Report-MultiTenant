@@ -9,6 +9,15 @@
 
 Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update en device compliance status voor meerdere tenants via Microsoft Graph. Het resultaat is een professioneel HTML-dashboard met filterbare tabellen, grafieken, compliance monitoring en gedetailleerde KB informatie.
 
+## 🎯 Versie 3.0 Hoogtepunten
+
+- **🛡️ Device Compliance Integration**: Volledige Microsoft Graph compliance monitoring
+- **🔄 Intelligent Backup System**: Automatische backups met retention management  
+- **🎨 Modern UI**: Dark/Light theme support met streamlined interface
+- **🕐 Timezone Support**: Configureerbare tijdzone weergave voor accurate timestamps
+- **📦 Enhanced Configuration**: Uitgebreide configuratie-opties voor alle functionaliteiten
+- **🗂️ KB Database Caching**: Intelligent caching systeem voor KB mapping database
+
 ## 🔄 **Backup & Archivering System**
 
 - **Automatische Backups**: Configureerbare backup van exports, archive en configuratiebestanden
@@ -28,15 +37,6 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **UTC Detection**: Intelligente tijdzone detectie en conversie
 - **Visual Feedback**: HTML headers tonen tijdzone informatie (bijv. "LastSeen (UTC+2)")
 - **Accurate Calculations**: Verbeterde sync berekeningen met tijdzone correctie
-
-## 🎯 Versie 3.0 Hoogtepunten
-
-- **🛡️ Device Compliance Integration**: Volledige Microsoft Graph compliance monitoring
-- **🔄 Intelligent Backup System**: Automatische backups met retention management  
-- **🎨 Modern UI**: Dark/Light theme support met streamlined interface
-- **🕐 Timezone Support**: Configureerbare tijdzone weergave voor accurate timestamps
-- **📦 Enhanced Configuration**: Uitgebreide configuratie-opties voor alle functionaliteiten
-- **🗂️ KB Database Caching**: Intelligent caching systeem voor KB mapping database
 
 ## 🚀 Hoofdfunctionaliteit
 
