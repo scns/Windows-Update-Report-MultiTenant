@@ -838,7 +838,7 @@ Controleer in Azure Portal of je App Registration deze permissies heeft:
 
 ---
 
-© 2025 l 22/08/2025 by Maarten Schmeitz
+© 2025 by Maarten Schmeitz
 
 [commits-shield]: https://img.shields.io/github/commit-activity/m/scns/Windows-Update-Report-MultiTenant.svg
 [commits]: https://github.com/scns/Windows-Update-Report-MultiTenant/commits/main
