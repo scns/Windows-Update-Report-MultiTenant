@@ -1,6 +1,6 @@
 # Configuratie Uitleg - config.json
 
-Dit bestand legt uit wat elke instelling in `config.json` doet.
+Dit bestand legt uit wat elke instelling in `config.json` doet voor versie 3.0.
 
 ## Setup
 
@@ -61,6 +61,56 @@ Dit bestand legt uit wat elke instelling in `config.json` doet.
 
 Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-dashboard.
 
+### `timezoneOffsetHours`
+
+- **Type**: Number
+- **Standaard**: 2
+- **Beschrijving**: Tijdzone offset in uren ten opzichte van UTC voor accurate weergave van LastSeen tijden.
+  - `2`: Nederland (zomertijd) - UTC+2
+  - `1`: Nederland (wintertijd) - UTC+1
+  - `0`: UTC tijd
+  - `-5`: US Eastern - UTC-5
+
+### `kbMapping`
+
+- **Type**: Object
+- **Beschrijving**: Instellingen voor de KB Mapping Database met intelligent caching systeem.
+
+#### `kbMappingUrl`
+
+- **Type**: String
+- **Beschrijving**: URL naar de online KB mapping database (JSON formaat).
+
+#### `timeoutSeconds`
+
+- **Type**: Number
+- **Standaard**: 10
+- **Beschrijving**: Timeout in seconden voor online KB database requests.
+
+#### `cacheValidMinutes`
+
+- **Type**: Number
+- **Standaard**: 30
+- **Beschrijving**: Geldigheid van cached KB data in minuten.
+
+#### `estimationThreshold`
+
+- **Type**: Number
+- **Standaard**: 1000
+- **Beschrijving**: Build verschil drempel voor KB schattingen.
+
+#### `showEstimationLabels`
+
+- **Type**: Boolean
+- **Standaard**: true
+- **Beschrijving**: Toont labels wanneer KB nummers geschat zijn.
+
+#### `fallbackToLocalMapping`
+
+- **Type**: Boolean
+- **Standaard**: true
+- **Beschrijving**: Gebruikt lokale kb-mapping.json als fallback bij netwerk problemen.
+
 ### `backup`
 
 - **Type**: Object
@@ -120,6 +170,20 @@ Deze filtering is zichtbaar in zowel de tabellen als de grafieken in het HTML-da
     "archiveDirectory": "archive",
     "autoOpenHtmlReport": true,
     "lastSeenDaysFilter": 0,
+    "timezoneOffsetHours": 2,
+    "kbMapping": {
+        "kbMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
+        "timeoutSeconds": 10,
+        "cacheValidMinutes": 30,
+        "estimationThreshold": 1000,
+        "showEstimationLabels": true,
+        "fallbackToLocalMapping": true,
+        "estimationLabels": {
+            "buildDifference": "(geschat voor build {targetBuild})",
+            "noMapping": "(geschat)",
+            "oldMapping": "(verouderd)"
+        }
+    },
     "backup": {
         "enableExportBackup": true,
         "enableArchiveBackup": true,
@@ -145,6 +209,8 @@ Met deze instellingen:
 - Nieuwe exports gaan naar de "exports" directory
 - Gearchiveerde bestanden gaan naar de "archive" directory
 - Het HTML-rapport wordt automatisch geopend in de webbrowser
-- De rapportage wordt gefilterd op basis van het aantal dagen sinds een device voor het laatst gezien is (indien ingesteld)
-- Back-ups worden gemaakt van de exports, archief en configuratiebestanden volgens de opgegeven instellingen
-- Het dashboard start standaard in donkere modus (kan handmatig gewijzigd worden)
+- Alle devices worden getoond (geen LastSeen filtering)
+- Tijdzone wordt weergegeven als UTC+2 (Nederlandse zomertijd)
+- KB Mapping database wordt gebruikt met 30 minuten cache
+- Automatische backups worden gemaakt met 5 bestanden retentie per type
+- Het dashboard start standaard in donkere modus
