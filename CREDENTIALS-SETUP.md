@@ -1,4 +1,4 @@
-# Credentials Setup Guide
+# Credentials Setup Guide v3.0
 
 Deze handleiding legt uit hoe je de credentials correct instelt voor het Windows Update Report MultiTenant script.
 
