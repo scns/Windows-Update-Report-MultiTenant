@@ -1,4 +1,4 @@
-# Configuratie Uitleg - config.json
+# Configuratie Uitleg - config.json v3.0
 
 Dit bestand legt uit wat elke instelling in `config.json` doet voor versie 3.0.
 

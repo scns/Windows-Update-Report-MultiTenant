@@ -1,4 +1,4 @@
-# Windows Update Report MultiTenant
+# Windows Update Report MultiTenant v3.0
 
 | Repository Status | Windows Update Report |
 | :--- | :--- |
