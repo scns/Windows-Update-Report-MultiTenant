@@ -29,8 +29,8 @@ Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 #>
 
 #Versie-informatie
-    $ProjectVersion = "3.0.0"
-    $LastEditDate = "2025-09-15"
+    $ProjectVersion = "4.0.0"
+    $LastEditDate = "2025-09-24"
 
 # Import configuratie
     try {
