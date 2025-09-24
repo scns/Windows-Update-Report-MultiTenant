@@ -363,10 +363,15 @@ function Get-LatestKBUpdate {
             Write-Verbose "KB mapping loaded from: $($kbMappingResult.Source)"
             
             # Zoek in de juiste Windows versie sectie
-            $MappingSection = if ([int]$TargetBuild -ge 22000) { 
-                $OnlineMapping.mappings.windows11 
-            } else { 
-                $OnlineMapping.mappings.windows10 
+            $MajorBuildNumber = [int]($TargetBuild -replace '\.\d+$', '')  # Verwijder minor build nummer
+            $MappingSection = if ($MajorBuildNumber -lt 22000) {
+                $OnlineMapping.mappings.windows10
+            } elseif ($MajorBuildNumber -ge 26200) {
+                $OnlineMapping.mappings.windows11_25h2
+            } elseif ($MajorBuildNumber -ge 26000) {
+                $OnlineMapping.mappings.windows11_24h2
+            } else {
+                $OnlineMapping.mappings.windows11_22h2
             }
             
             # Zoek exacte match (inclusief minor builds)
@@ -670,9 +675,16 @@ function Get-MissingUpdatesFromKBDatabase {
         $minorBuild = [int]$matches[2]
         $currentBuildString = "$majorBuild.$minorBuild"
         
-        # Bepaal Windows versie
-        $isWindows11 = [int]$majorBuild -ge 22000
-        $windowsVersion = if ($isWindows11) { "windows11" } else { "windows10" }
+        # Bepaal Windows versie en subversie
+        if ([int]$majorBuild -lt 22000) {
+            $windowsVersion = "windows10"
+        } elseif ([int]$majorBuild -ge 26200) {
+            $windowsVersion = "windows11_25h2"
+        } elseif ([int]$majorBuild -ge 26000) {
+            $windowsVersion = "windows11_24h2"
+        } else {
+            $windowsVersion = "windows11_22h2"
+        }
         
         # Toegang tot KB mapping
         if (-not $KBMappingCache -or -not $KBMappingCache.mappings -or -not $KBMappingCache.mappings.$windowsVersion) {
@@ -810,25 +822,18 @@ try {
     if ($kbMappingResult.Success) {
         $totalEntries = 0
         if ($kbMappingResult.Data -and $kbMappingResult.Data.mappings) {
-            # Tel Windows 11 entries (inclusief minor builds)
-            if ($kbMappingResult.Data.mappings.windows11) {
-                $totalEntries += ($kbMappingResult.Data.mappings.windows11.PSObject.Properties | Measure-Object).Count
-                # Tel minor builds
-                foreach ($build in $kbMappingResult.Data.mappings.windows11.PSObject.Properties.Name) {
-                    $buildInfo = $kbMappingResult.Data.mappings.windows11.$build
-                    if ($buildInfo.builds) {
-                        $totalEntries += ($buildInfo.builds.PSObject.Properties | Measure-Object).Count
-                    }
-                }
-            }
-            # Tel Windows 10 entries (inclusief minor builds)
-            if ($kbMappingResult.Data.mappings.windows10) {
-                $totalEntries += ($kbMappingResult.Data.mappings.windows10.PSObject.Properties | Measure-Object).Count
-                # Tel minor builds
-                foreach ($build in $kbMappingResult.Data.mappings.windows10.PSObject.Properties.Name) {
-                    $buildInfo = $kbMappingResult.Data.mappings.windows10.$build
-                    if ($buildInfo.builds) {
-                        $totalEntries += ($buildInfo.builds.PSObject.Properties | Measure-Object).Count
+            # Tel alle Windows versie entries (inclusief minor builds)
+            $windowsVersions = @("windows10", "windows11_22h2", "windows11_24h2", "windows11_25h2")
+            
+            foreach ($osVersion in $windowsVersions) {
+                if ($kbMappingResult.Data.mappings.$osVersion) {
+                    $totalEntries += ($kbMappingResult.Data.mappings.$osVersion.PSObject.Properties | Measure-Object).Count
+                    # Tel minor builds
+                    foreach ($build in $kbMappingResult.Data.mappings.$osVersion.PSObject.Properties.Name) {
+                        $buildInfo = $kbMappingResult.Data.mappings.$osVersion.$build
+                        if ($buildInfo.builds) {
+                            $totalEntries += ($buildInfo.builds.PSObject.Properties | Measure-Object).Count
+                        }
                     }
                 }
             }
@@ -2121,10 +2126,14 @@ $Html = @"
         text-transform: uppercase; 
         letter-spacing: 0.5px;
     }
-    .version-badge.win11 { background-color: #0078d4; color: white; }
+    .version-badge.win11-25h2 { background-color: #00d4aa; color: white; }
+    .version-badge.win11-24h2 { background-color: #0078d4; color: white; }
+    .version-badge.win11-22h2 { background-color: #5856d6; color: white; }
     .version-badge.win10 { background-color: #ff8c00; color: white; }
     .version-badge.historical { background-color: #6c757d; color: white; }
-    body.darkmode .version-badge.win11 { background-color: #106ebe; }
+    body.darkmode .version-badge.win11-25h2 { background-color: #00a085; }
+    body.darkmode .version-badge.win11-24h2 { background-color: #106ebe; }
+    body.darkmode .version-badge.win11-22h2 { background-color: #4240b8; }
     body.darkmode .version-badge.win10 { background-color: #cc7000; }
     body.darkmode .version-badge.historical { background-color: #5a6268; }
     
@@ -2389,20 +2398,56 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
             $kbEntries = @()
             
-            # Verwerk Windows 11 mappings
-            if ($KBMappingForHTML.Data.mappings.windows11) {
-                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11.PSObject.Properties.Name | Sort-Object -Descending)) {
-                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11.$baseBuild
+            # Verwerk Windows 11 25H2 mappings
+            if ($KBMappingForHTML.Data.mappings.windows11_25h2) {
+                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11_25h2.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11_25h2.$baseBuild
                     
                     # Specifieke builds (indien beschikbaar)
                     if ($kbInfo.builds) {
                         foreach ($specificBuild in ($kbInfo.builds.PSObject.Properties.Name | Sort-Object -Descending)) {
                             $buildInfo = $kbInfo.builds.$specificBuild
-                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win11'>Windows 11 $($kbInfo.version)</span></td></tr>"
+                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win11-25h2'>Windows 11 25H2</span></td></tr>"
                         }
                     } else {
                         # Fallback voor hoofdbuild als er geen specifieke builds zijn
-                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win11'>Windows 11 $($kbInfo.version)</span></td></tr>"
+                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win11-25h2'>Windows 11 25H2</span></td></tr>"
+                    }
+                }
+            }
+            
+            # Verwerk Windows 11 24H2 mappings
+            if ($KBMappingForHTML.Data.mappings.windows11_24h2) {
+                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11_24h2.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11_24h2.$baseBuild
+                    
+                    # Specifieke builds (indien beschikbaar)
+                    if ($kbInfo.builds) {
+                        foreach ($specificBuild in ($kbInfo.builds.PSObject.Properties.Name | Sort-Object -Descending)) {
+                            $buildInfo = $kbInfo.builds.$specificBuild
+                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win11-24h2'>Windows 11 24H2</span></td></tr>"
+                        }
+                    } else {
+                        # Fallback voor hoofdbuild als er geen specifieke builds zijn
+                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win11-24h2'>Windows 11 24H2</span></td></tr>"
+                    }
+                }
+            }
+            
+            # Verwerk Windows 11 22H2/23H2 mappings
+            if ($KBMappingForHTML.Data.mappings.windows11_22h2) {
+                foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11_22h2.PSObject.Properties.Name | Sort-Object -Descending)) {
+                    $kbInfo = $KBMappingForHTML.Data.mappings.windows11_22h2.$baseBuild
+                    
+                    # Specifieke builds (indien beschikbaar)
+                    if ($kbInfo.builds) {
+                        foreach ($specificBuild in ($kbInfo.builds.PSObject.Properties.Name | Sort-Object -Descending)) {
+                            $buildInfo = $kbInfo.builds.$specificBuild
+                            $kbEntries += "<tr class='build-row'><td>$specificBuild</td><td>$($buildInfo.kb)</td><td>$($buildInfo.description)</td><td>$($buildInfo.releaseDate)</td><td>$($buildInfo.date)</td><td><span class='version-badge win11-22h2'>Windows 11 $($kbInfo.version)</span></td></tr>"
+                        }
+                    } else {
+                        # Fallback voor hoofdbuild als er geen specifieke builds zijn
+                        $kbEntries += "<tr class='build-row'><td>$baseBuild.xxxx</td><td>$($kbInfo.kb)</td><td>$($kbInfo.title)</td><td>$($kbInfo.releaseDate)</td><td>$($kbInfo.date)</td><td><span class='version-badge win11-22h2'>Windows 11 $($kbInfo.version)</span></td></tr>"
                     }
                 }
             }
