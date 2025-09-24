@@ -275,7 +275,7 @@ function Test-AppRegistrationValidity {
             DaysRemaining = 0
             ExpiryDate = $null
             Color = "Red"
-            Message = "Fout bij controle: $($_.Exception.Message)"
+            Message = "Error during check: $($_.Exception.Message)"
         }
     }
     finally {
@@ -396,7 +396,7 @@ function Get-LatestKBUpdate {
             
             if ($FoundMapping) {
                 $KBNumber = $FoundMapping.kb
-                # Check of de online title al "for Windows" bevat
+                # Check if the online title already contains "for Windows"
                 $baseTitle = $FoundMapping.title
                 if (-not $baseTitle) { $baseTitle = "Cumulative Update" }
                 if ($baseTitle -notmatch "for Windows") {
@@ -405,7 +405,7 @@ function Get-LatestKBUpdate {
                     $UpdateTitle = "$($FoundMapping.date) $baseTitle ($KBNumber)"
                 }
                 
-                # Voeg beschrijving toe als beschikbaar
+                # Add description if available
                 if ($FoundMapping.description) {
                     $UpdateTitle += " - $($FoundMapping.description)"
                 }
@@ -427,7 +427,7 @@ function Get-LatestKBUpdate {
                 if ($ClosestBuild -and $SmallestDifference -lt 1000) {
                     $FoundMapping = $MappingSection.$ClosestBuild
                     $KBNumber = $FoundMapping.kb
-                    # Check of de online title al "for Windows" bevat
+                    # Check if the online title already contains "for Windows"
                     $baseTitle = $FoundMapping.title
                     if ($baseTitle -notmatch "for Windows") {
                         $UpdateTitle = "$($FoundMapping.date) $baseTitle for $WindowsProduct ($KBNumber)"
@@ -438,7 +438,7 @@ function Get-LatestKBUpdate {
                         $estimationLabel = if ($Config.kbMapping.estimationLabels.buildDifference) { 
                             $Config.kbMapping.estimationLabels.buildDifference -replace '\{targetBuild\}', $TargetBuild 
                         } else { 
-                            "(geschat voor build $TargetBuild)" 
+                            "(estimated for build $TargetBuild)" 
                         }
                         $UpdateTitle += " $estimationLabel"
                     }
@@ -532,7 +532,7 @@ function Get-LatestKBUpdate {
                     $UpdateTitle = "$($ClosestMapping.Date) $baseTitle ($KBNumber)"
                 }
                 
-                # Controleer of de mapping oud is (datum meer dan 6 maanden geleden)
+                # Check if the mapping is old (date more than 6 months ago)
                 $mappingDate = try { [DateTime]::ParseExact($ClosestMapping.Date, "yyyy-MM", $null) } catch { $null }
                 $isOldMapping = $mappingDate -and (Get-Date).AddMonths(-6) -gt $mappingDate
                 
@@ -733,8 +733,8 @@ function Get-MissingUpdatesFromKBDatabase {
         if ($buildMapping.builds) {
             $allBuilds = @()
             
-            # Alleen vergelijken binnen dezelfde Windows versie (24H2, 25H2, etc.)
-            # Verzamel alleen builds die tot dezelfde major build EN Windows versie behoren
+            # Only compare within the same Windows version (24H2, 25H2, etc.)
+            # Collect only builds that belong to the same major build AND Windows version
             foreach ($buildKey in $buildMapping.builds.PSObject.Properties.Name) {
                 if ($buildKey -match "$majorBuild\.(\d+)") {
                     $buildMajor = [int]$majorBuild
@@ -769,7 +769,7 @@ function Get-MissingUpdatesFromKBDatabase {
             # Dit voorkomt dat 24H2 machines 25H2 updates als "missing" krijgen
             $targetBuilds = $sortedBuilds | Where-Object { $_.MinorVersion -gt $minorBuild }
             
-            # Verzamel unieke KB nummers van alle hogere builds (binnen dezelfde OS versie)
+            # Collect unique KB numbers from all higher builds (within the same OS version)
             $uniqueKBs = @()
             foreach ($build in $targetBuilds) {
                 if ($build.KB -and $uniqueKBs -notcontains $build.KB) {
@@ -800,19 +800,19 @@ function Get-MissingUpdatesFromKBDatabase {
 $env:POWERSHELL_TELEMETRY_OPTOUT = "1"
 $ProgressPreference = "SilentlyContinue"
 
-# Controleer of de exports directory bestaat, zo niet: maak hem aan
+# Check if the exports directory exists, if not: create it
 $ExportDir = ".\$($config.exportDirectory)"
 if (-not (Test-Path -Path $ExportDir -PathType Container)) {
     New-Item -Path $ExportDir -ItemType Directory | Out-Null
 }
 
-# Controleer of de archive directory bestaat, zo niet: maak hem aan
+# Check if the archive directory exists, if not: create it
 $ArchiveDir = ".\$($config.archiveDirectory)"
 if (-not (Test-Path -Path $ArchiveDir -PathType Container)) {
     New-Item -Path $ArchiveDir -ItemType Directory | Out-Null
 }
 
-# Functie voor het verplaatsen van oude export bestanden naar archief
+# Function for moving old export files to archive
 function Move-OldExportsToArchive {
     param(
         [string]$ExportPath,
@@ -821,18 +821,18 @@ function Move-OldExportsToArchive {
     )
     
     if ($config.cleanupOldExports -eq $true -and $RetentionCount -gt 0) {
-        Write-Host "Bezig met archiveren van oude export bestanden... (behouden: $RetentionCount per type)" -ForegroundColor Cyan
+        Write-Host "Archiving old export files... (keeping: $RetentionCount per type)" -ForegroundColor Cyan
         
-        # Groepeer bestanden per type (Overview of ByUpdate) en per klant
+        # Group files per type (Overview or ByUpdate) and per customer
         $AllFiles = Get-ChildItem -Path $ExportPath -Filter "*.csv" | Sort-Object Name -Descending
         
-        # Groepeer per klant en type
+        # Group per customer and type
         $GroupedFiles = $AllFiles | Group-Object { 
-            # Verwacht patroon: Prefix_Customer_Type.csv
+            # Expected pattern: Prefix_Customer_Type.csv
             $parts = $_.Name -split "_"
-            # Controleer of het bestand voldoet aan het verwachte patroon
+            # Check if the file matches the expected pattern
             if ($parts.Count -ge 3) {
-                # Controleer of het laatste deel eindigt op .csv
+                # Check if the last part ends with .csv
                 $typePart = $parts[-1]
                 if ($typePart -match "^[A-Za-z]+\.csv$") {
                     return "$($parts[1])_$($typePart)" # CustomerName_Type.csv
@@ -863,24 +863,24 @@ $json = Get-Content -Path ".\credentials.json" -Raw
 # Convert JSON to PowerShell object
 $data = $json | ConvertFrom-Json
 
-# Verzamel App Registration informatie
+# Collect App Registration information
 $AppRegistrationData = @{}
 
-# Verzamel KB Mapping informatie voor HTML rapport
-Write-Host "Ophalen KB Mapping informatie voor HTML rapport..." -ForegroundColor White
+# Collect KB Mapping information for HTML report
+Write-Host "Retrieving KB Mapping information for HTML report..." -ForegroundColor White
 $KBMappingForHTML = $null
 try {
     $kbMappingResult = Get-CachedKBMapping -OnlineKBUrl $config.kbMapping.kbMappingUrl -TimeoutSeconds $config.kbMapping.timeoutSeconds -CacheValidMinutes $config.kbMapping.cacheValidMinutes
     if ($kbMappingResult.Success) {
         $totalEntries = 0
         if ($kbMappingResult.Data -and $kbMappingResult.Data.mappings) {
-            # Tel alle Windows versie entries (inclusief minor builds)
+            # Count all Windows version entries (including minor builds)
             $windowsVersions = @("windows10", "windows11_22h2", "windows11_24h2", "windows11_25h2")
             
             foreach ($osVersion in $windowsVersions) {
                 if ($kbMappingResult.Data.mappings.$osVersion) {
                     $totalEntries += ($kbMappingResult.Data.mappings.$osVersion.PSObject.Properties | Measure-Object).Count
-                    # Tel minor builds
+                    # Count minor builds
                     foreach ($build in $kbMappingResult.Data.mappings.$osVersion.PSObject.Properties.Name) {
                         $buildInfo = $kbMappingResult.Data.mappings.$osVersion.$build
                         if ($buildInfo.builds) {
@@ -889,7 +889,7 @@ try {
                     }
                 }
             }
-            # Tel Historical entries
+            # Count Historical entries
             if ($kbMappingResult.Data.mappings.historical) {
                 foreach ($year in $kbMappingResult.Data.mappings.historical.PSObject.Properties.Name) {
                     $totalEntries += ($kbMappingResult.Data.mappings.historical.$year.PSObject.Properties | Measure-Object).Count
@@ -944,12 +944,12 @@ foreach ($cred in $data.LoginCredentials) {
     $Secret = ConvertTo-SecureString $Secret -AsPlainText -Force
     $ClientSecretCredential = New-Object System.Management.Automation.PSCredential -ArgumentList ($ClientID, $Secret)
     
-    # Controleer App Registration geldigheid
-    Write-Host "Controleren App Registration geldigheid..." -ForegroundColor White
+    # Check App Registration validity
+    Write-Host "Checking App Registration validity..." -ForegroundColor White
     $AppValidity = Test-AppRegistrationValidity -TenantID $TenantID -ClientID $ClientID -ClientSecretCredential $ClientSecretCredential
     Write-Host "App Registration: $($AppValidity.Message)" -ForegroundColor $AppValidity.Color
     
-    # Sla App Registration info op voor HTML rapport
+    # Save App Registration info for HTML report
     $AppRegistrationData[$cred.customername] = $AppValidity
 
     #Connect to Graph using Application Secret
@@ -958,20 +958,20 @@ foreach ($cred in $data.LoginCredentials) {
     Write-Host "Ophalen Windows Update status via Device Management..." -ForegroundColor Cyan
 
     try {
-        # Probeer Windows devices op te halen via Device Management API
+        # Try to retrieve Windows devices via Device Management API
         $DevicesUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$filter=operatingSystem eq 'Windows'"
         
         try {
             $DevicesResponse = Invoke-MgGraphRequest -Method GET -Uri $DevicesUri -ErrorAction Stop
             $Devices = $DevicesResponse.value
             
-            Write-Host "Gevonden $($Devices.Count) Windows devices..." -ForegroundColor Green
+            Write-Host "Found $($Devices.Count) Windows devices..." -ForegroundColor Green
         }
         catch {
-            # Als Device Management API faalt (bijv. geen permissions), gebruik fallback
-            Write-Warning "Device Management API niet beschikbaar voor deze tenant. Reden: $($_.Exception.Message)"
-            Write-Host "Gebruik fallback methode met Threat Hunting API..." -ForegroundColor Yellow
-            $Devices = @()  # Forceer fallback door lege array
+            # If Device Management API fails (e.g. no permissions), use fallback
+            Write-Warning "Device Management API not available for this tenant. Reason: $($_.Exception.Message)"
+            Write-Host "Using fallback method with Threat Hunting API..." -ForegroundColor Yellow
+            $Devices = @()  # Force fallback with empty array
         }
         
         if ($Devices.Count -eq 0) {
@@ -1171,7 +1171,7 @@ foreach ($cred in $data.LoginCredentials) {
                             if ($OSVersion -and $OSVersion -match '10\.0\.(\d+)\.(\d+)') {
                                 $currentBuild = "$($matches[1]).$($matches[2])"
                                 
-                                # Gebruik KB database om missing updates te bepalen
+                                # Use KB database to determine missing updates
                                 $kbMappingCache = $Global:CachedKBMapping
                                 $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $OSVersion -KBMappingCache $kbMappingCache
                                 
@@ -1215,7 +1215,7 @@ foreach ($cred in $data.LoginCredentials) {
                         ActualMissingUpdates = $ActualMissingUpdates
                         Count = $UpdateCount
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
-                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
+                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "No user" }
                         OSPlatform = $Device.operatingSystem
                         OSVersion = $Device.osVersion
                         UpdateStatus = $UpdateStatus
@@ -1229,11 +1229,11 @@ foreach ($cred in $data.LoginCredentials) {
                         DeviceName = $Device.deviceName
                         MissingUpdates = @("Error: Kan Windows Update status niet controleren")
                         ActualMissingUpdates = @()
-                        Count = 1  # Error = één probleem item
+                        Count = 1  # Error = one problem item
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
-                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
+                        LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "No user" }
                         OSPlatform = $Device.operatingSystem
-                        OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Onbekend" }
+                        OSVersion = if ($Device.osVersion) { $Device.osVersion } else { "Unknown" }
                         UpdateStatus = "Error"
                         ComplianceStatus = "Error"
                     }
@@ -1248,7 +1248,7 @@ foreach ($cred in $data.LoginCredentials) {
         
         # === OS VERSIE ANALYSE ===
         # Analyseer OS versies om machines met verouderde builds te identificeren
-        # Gebruik versie-specifieke logica om cross-version vergelijking te voorkomen
+        # Use version-specific logic to prevent cross-version comparison
         $OSVersionGroups = $ResultsArray | Where-Object { $_.OSVersion -and $_.OSVersion -ne "Onbekend" } | 
                           Group-Object OSVersion | 
                           Sort-Object Name -Descending
@@ -1294,7 +1294,7 @@ foreach ($cred in $data.LoginCredentials) {
                 }
             }
             
-            # Update de resultaten voor machines met verouderde OS versies - gebruik versie-specifieke logica
+            # Update the results for machines with outdated OS versions - use version-specific logic
             $UpdatedResults = @()
             foreach ($result in $ResultsArray) {
                 $newResult = $result.PSObject.Copy()
@@ -1320,11 +1320,11 @@ foreach ($cred in $data.LoginCredentials) {
                             $currentBuild = $result.OSVersion -replace '.*\.(\d+)$', '$1'
                             $latestBuild = $latestForThisWindowsVersion -replace '.*\.(\d+)$', '$1'
                         
-                            # Voor Windows 11/10 updates - haal KB nummers online op
+                            # For Windows 11/10 updates - retrieve KB numbers online
                             if ($currentBuild -match '^\d+$' -and $latestBuild -match '^\d+$') {
                                 $buildDifference = [int]$latestBuild - [int]$currentBuild
                                 if ($buildDifference -gt 0) {
-                                    # Gebruik KB database om missing updates te bepalen
+                                    # Use KB database to determine missing updates
                                     Write-Verbose "Looking up KB information for OS version: $($result.OSVersion)"
                                     $kbMappingCache = $Global:CachedKBMapping
                                     $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $result.OSVersion -KBMappingCache $kbMappingCache
@@ -1378,7 +1378,7 @@ foreach ($cred in $data.LoginCredentials) {
         Write-Warning "Fout bij ophalen Windows Update informatie voor $($cred.customername): $($_.Exception.Message)"
         Write-Host "Overslaan van deze klant en doorgaan met volgende..." -ForegroundColor Yellow
         
-        # Maak lege results voor deze klant
+        # Create empty results for this customer
         $Result = @{
             results = @([PSCustomObject]@{
                 DeviceName = "Geen toegang"
@@ -1469,10 +1469,10 @@ foreach ($cred in $data.LoginCredentials) {
 # Voer archivering uit na alle exports
 Move-OldExportsToArchive -ExportPath $ExportDir -ArchivePath $ArchiveDir -RetentionCount $config.exportRetentionCount
 
-# Verzamel alle Overview-bestanden
+# Collect all Overview files
 $OverviewFiles = Get-ChildItem -Path "$ExportDir" -Filter "*_Overview.csv" | Sort-Object Name
 
-# Haal de totalen per dag per klant op
+# Retrieve the totals per day per customer
 $CountsPerDayPerCustomer = @{}
 $ClientsPerDayPerCustomer = @{}
 $LatestDatePerCustomer = @{}
@@ -1526,7 +1526,7 @@ foreach ($file in $OverviewFiles) {
     }
 }
 
-# Verzamel alle unieke datums en sorteer ze
+# Collect all unique dates and sort them
 $AllDates = @()
 foreach ($Customer in $CountsPerDayPerCustomer.Keys) {
     foreach ($DataPoint in $CountsPerDayPerCustomer[$Customer]) {
@@ -1543,7 +1543,7 @@ $ChartLabelsString = $ChartLabels -join ","
 $ChartDatasets = ""
 $ChartDataJSON = "{"
 foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
-    # Maak hashtables voor snelle lookup van data per datum
+    # Create hashtables for fast lookup of data per date
     $CustomerCountLookup = @{}
     $CustomerClientLookup = @{}
     $now = Get-Date
@@ -1604,7 +1604,7 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
     
     $credObj = $data.LoginCredentials | Where-Object { $_.customername -eq $Customer }
     $HexColor = $credObj.color
-    # Fallback: als geen kleur, gebruik blauw
+    # Fallback: if no color, use blue
     if (-not $HexColor) { $HexColor = '#1f77b4' }
 
     # Dataset 1: Updates (volle lijn)
@@ -1920,7 +1920,7 @@ $(document).ready(function() {
             $('#' + tableId + ' thead th').each(function (i) {
                 var title = $(this).text();
                 
-                // Voor "Update Status" kolom (index 1): gebruik dropdown filter
+                // For "Update Status" column (index 1): use dropdown filter
                 if (i === 1 && title.includes('Update Status')) {
                     // Verzamel unieke waarden uit de kolom
                     var uniqueValues = [];
@@ -1942,7 +1942,7 @@ $(document).ready(function() {
                         var val = $.fn.dataTable.util.escapeRegex($(this).val());
                         table.column(i).search(val ? '^' + val + '$' : '', true, false).draw();
                     });
-                // Voor "Compliance Status" kolom (index 2): gebruik dropdown filter
+                // For "Compliance Status" column (index 2): use dropdown filter
                 } else if (i === 2 && title.includes('Compliance Status')) {
                     // Verzamel unieke waarden uit de kolom
                     var uniqueValues = [];
@@ -1965,7 +1965,7 @@ $(document).ready(function() {
                         table.column(i).search(val ? '^' + val + '$' : '', true, false).draw();
                     });
                 } else {
-                    // Voor andere kolommen: gebruik tekstfilter
+                    // For other columns: use text filter
                     $(this).append('<br><input type="text" placeholder="Filter '+title+'" style="width:90%;font-size:12px;" />');
                     $(this).find("input").on('keyup change', function () {
                         if (table.column(i).search() !== this.value) {
@@ -2044,7 +2044,7 @@ $(document).ready(function() {
             }
         }
         
-        // Reset Compliance Status filter (kolom 2) wanneer Update Status filter wordt gebruikt
+        // Reset Compliance Status filter (column 2) when Update Status filter is used
         table.column(2).search('').draw();
         $('#' + tableId + ' thead th:eq(2) select').val('');
         
