@@ -1,49 +1,49 @@
 <#
 .SYNOPSIS
-Genereert een Windows Update rapportage voor meerdere tenants via Microsoft Graph.
+Generates a Windows Update report for multiple tenants via Microsoft Graph.
 
 .DESCRIPTION
-Dit script haalt per tenant de ontbrekende Windows-updates op via de Microsoft Graph Threat Hunting API.
-De resultaten worden geëxporteerd naar CSV-bestanden en een HTML-dashboard met filterbare tabellen en grafieken.
+This script retrieves missing Windows updates per tenant via the Microsoft Graph Threat Hunting API.
+Results are exported to CSV files and an HTML dashboard with filterable tables and charts.
 
-.BENODIGDHEDEN
+.REQUIREMENTS
 - PowerShell 5+
 - Microsoft Graph PowerShell SDK
-- Een Azure AD App Registration per tenant met de juiste permissies
+- An Azure AD App Registration per tenant with the proper permissions
 
-.GEBRUIK
-1. Vul het credentials.json bestand met de juiste tenantgegevens.
-2. config.json bevat de export instellingen zoals de export directory, archief directory en het aantal te behouden exports.
-3. Voer het script uit: .\get-windows-update-report.ps1
-4. Bekijk de resultaten in de map 'exports'.
+.USAGE
+1. Fill the credentials.json file with the correct tenant data.
+2. config.json contains export settings like export directory, archive directory and number of exports to retain.
+3. Run the script: .\get-windows-update-report.ps1
+4. View the results in the 'exports' folder.
 
 
-.AUTEUR
+.AUTHOR
 Maarten Schmeitz (info@maarten-schmeitz.nl  | https://www.mrtn.blog)
 
 .LASTEDIT
 2025-09-11
 
-.VERSIE
+.VERSION
 3.0.0
 #>
 
-#Versie-informatie
+# Version information
     $ProjectVersion = "4.0.0"
     $LastEditDate = "2025-09-24"
 
-# Import configuratie
+# Import configuration
     try {
     $configJson = Get-Content -Path ".\config.json" -Raw
     $config = $configJson | ConvertFrom-Json
 }
 catch {
-    Write-Error "Fout bij het laden of parsen van 'config.json': $($_.Exception.Message)"
-    Write-Host "Controleer of 'config.json' aanwezig is, leesbaar is, en geldige JSON bevat." -ForegroundColor Red
+    Write-Error "Error loading or parsing 'config.json': $($_.Exception.Message)"
+    Write-Host "Check if 'config.json' exists, is readable, and contains valid JSON." -ForegroundColor Red
     exit 1
 }
 
-# Timezone conversie functie
+# Timezone conversion function
 function Convert-UTCToLocalTime {
     param(
         [Parameter(Mandatory=$true)]
@@ -53,12 +53,12 @@ function Convert-UTCToLocalTime {
     )
     
     try {
-        # Controleer of de string al timezone info bevat
+        # Check if the string already contains timezone info
         if ($UTCTimeString -match 'Z$' -or $UTCTimeString -match '[+-]\d{2}:\d{2}$') {
-            # Parse als UTC tijd met timezone info
+            # Parse as UTC time with timezone info
             $utcTime = [DateTime]::Parse($UTCTimeString).ToUniversalTime()
         } else {
-            # Probeer verschillende DateTime formaten
+            # Try different DateTime formats
             $utcTime = $null
             $formats = @(
                 "yyyy-MM-ddTHH:mm:ss.fffZ",
@@ -73,39 +73,39 @@ function Convert-UTCToLocalTime {
                     $utcTime = [DateTime]::ParseExact($UTCTimeString, $format, $null)
                     break
                 } catch {
-                    # Probeer volgende formaat
+                    # Try next format
                 }
             }
             
-            # Als geen formaat werkt, probeer standaard parse
+            # If no format works, try default parse
             if (-not $utcTime) {
                 $utcTime = [DateTime]::Parse($UTCTimeString)
             }
         }
         
-        # Voeg offset toe
+        # Add offset
         $localTime = $utcTime.AddHours($OffsetHours)
         
         # Return formatted string
         return $localTime.ToString("yyyy-MM-dd HH:mm:ss")
     }
     catch {
-        # Return original string als conversie faalt
-        Write-Verbose "Timezone conversie gefaald voor '$UTCTimeString': $($_.Exception.Message)"
+        # Return original string if conversion fails
+        Write-Verbose "Timezone conversion failed for '$UTCTimeString': $($_.Exception.Message)"
         return $UTCTimeString
     }
 }
 
-# Globale cache voor KB mapping
+# Global cache for KB mapping
 $Global:CachedKBMapping = $null
 $Global:KBMappingCacheTime = $null
-$Global:KBMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
+$Global:KBMappingCacheValidMinutes = 30  # Cache valid for 30 minutes
 
-# Timezone offset uit config (standaard 0 voor UTC)
+# Timezone offset from config (default 0 for UTC)
 $TimezoneOffsetHours = if ($config.timezoneOffsetHours) { $config.timezoneOffsetHours } else { 0 }
-Write-Host "Timezone offset: UTC+$TimezoneOffsetHours uur" -ForegroundColor Cyan
+Write-Host "Timezone offset: UTC+$TimezoneOffsetHours hours" -ForegroundColor Cyan
 
-# Functie om KB mapping te laden en cachen
+# Function to load and cache KB mapping
 function Get-CachedKBMapping {
     param(
         [string]$OnlineKBUrl,
@@ -113,7 +113,7 @@ function Get-CachedKBMapping {
         [int]$CacheValidMinutes = 30
     )
     
-    # Controleer of cache nog geldig is
+    # Check if cache is still valid
     $now = Get-Date
     if ($Global:CachedKBMapping -and $Global:KBMappingCacheTime) {
         $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
@@ -127,7 +127,7 @@ function Get-CachedKBMapping {
         }
     }
     
-    # Cache is verlopen of niet aanwezig, probeer online op te halen
+    # Cache is expired or not available, try to fetch online
     try {
         Write-Verbose "Fetching fresh KB mapping from: $OnlineKBUrl (timeout: $TimeoutSeconds seconds)"
         $onlineMapping = Invoke-RestMethod -Uri $OnlineKBUrl -Method GET -TimeoutSec $TimeoutSeconds -ErrorAction Stop
@@ -145,7 +145,7 @@ function Get-CachedKBMapping {
     } catch {
         Write-Verbose "Failed to fetch online KB mapping: $($_.Exception.Message)"
         
-        # Als er een oude cache is, gebruik die als fallback
+        # If there's an old cache, use it as fallback
         if ($Global:CachedKBMapping) {
             $cacheAge = ($now - $Global:KBMappingCacheTime).TotalMinutes
             Write-Verbose "Using expired cached KB mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
@@ -165,60 +165,60 @@ function Get-CachedKBMapping {
     }
 }
 
-# Functie voor het controleren en installeren van PowerShell modules
+# Function for checking and installing PowerShell modules
 function Install-RequiredModules {
     param(
         [string[]]$ModuleNames
     )
     
-    Write-Host "Controleren van benodigde PowerShell modules..." -ForegroundColor Cyan
+    Write-Host "Checking required PowerShell modules..." -ForegroundColor Cyan
     
     foreach ($ModuleName in $ModuleNames) {
-        Write-Host "Verwerken van module: $ModuleName" -ForegroundColor White
+        Write-Host "Processing module: $ModuleName" -ForegroundColor White
         
         $Module = Get-Module -ListAvailable -Name $ModuleName
         
         if (-not $Module) {
-            Write-Host "Module '$ModuleName' niet gevonden. Bezig met installeren..." -ForegroundColor Yellow
+            Write-Host "Module '$ModuleName' not found. Installing..." -ForegroundColor Yellow
             try {
                 Install-Module -Name $ModuleName -Scope CurrentUser -Force -AllowClobber
-                Write-Host "Module '$ModuleName' succesvol geïnstalleerd." -ForegroundColor Green
+                Write-Host "Module '$ModuleName' successfully installed." -ForegroundColor Green
             }
             catch {
-                Write-Error "Fout bij installeren van module '$ModuleName': $($_.Exception.Message)"
+                Write-Error "Error installing module '$ModuleName': $($_.Exception.Message)"
                 throw
             }
         }
         else {
-            Write-Host "Module '$ModuleName' is al aanwezig." -ForegroundColor Green
+            Write-Host "Module '$ModuleName' is already present." -ForegroundColor Green
         }
         
-        # Importeer de module met expliciete feedback
-        Write-Host "Importeren van module '$ModuleName'..." -ForegroundColor White
+        # Import the module with explicit feedback
+        Write-Host "Importing module '$ModuleName'..." -ForegroundColor White
         try {
-            # Probeer eerst alleen de benodigde commands te importeren
+            # Try to import only the required commands first
             Import-Module -Name $ModuleName -Force -ErrorAction Stop
-            Write-Host "Module '$ModuleName' geïmporteerd." -ForegroundColor Green
+            Write-Host "Module '$ModuleName' imported." -ForegroundColor Green
         }
         catch {
-            Write-Error "Fout bij importeren van module '$ModuleName': $($_.Exception.Message)"
+            Write-Error "Error importing module '$ModuleName': $($_.Exception.Message)"
             throw
         }
     }
     
-    Write-Host "Module controle voltooid." -ForegroundColor Green
+    Write-Host "Module check completed." -ForegroundColor Green
 }
 
-# Lijst van benodigde modules
+# List of required modules
 $RequiredModules = @(
     "Microsoft.Graph.Authentication",
     "Microsoft.Graph.Security"
 )
 
-# Installeer en importeer benodigde modules
+# Install and import required modules
 Install-RequiredModules -ModuleNames $RequiredModules
 
-# Functie voor het controleren van App Registration geldigheid
+# Function for checking App Registration validity
 function Test-AppRegistrationValidity {
     param(
         [string]$TenantID,
@@ -227,14 +227,14 @@ function Test-AppRegistrationValidity {
     )
     
     try {
-        # Verbind met Graph
+        # Connect to Graph
         Connect-MgGraph -TenantId $TenantID -ClientSecretCredential $ClientSecretCredential -NoWelcome | Out-Null
         
-        # Haal app registration details op
+        # Get app registration details
         $App = Get-MgApplication -Filter "AppId eq '$ClientID'"
         
         if ($App -and $App.PasswordCredentials) {
-            # Zoek naar de actieve client secret
+            # Search for the active client secret
             $ActiveSecret = $App.PasswordCredentials | Where-Object { 
                 $_.EndDateTime -gt (Get-Date) 
             } | Sort-Object EndDateTime | Select-Object -First 1
@@ -243,7 +243,7 @@ function Test-AppRegistrationValidity {
                 $ExpiryDate = $ActiveSecret.EndDateTime
                 $DaysRemaining = [math]::Floor(($ExpiryDate - (Get-Date)).TotalDays)
                 
-                # Bepaal kleur op basis van dagen
+                # Determine color based on days
                 $Color = switch ($DaysRemaining) {
                     { $_ -gt 30 } { "Green" }
                     { $_ -ge 15 -and $_ -le 30 } { "Yellow" }
@@ -256,7 +256,7 @@ function Test-AppRegistrationValidity {
                     DaysRemaining = $DaysRemaining
                     ExpiryDate = $ExpiryDate
                     Color = $Color
-                    Message = "$DaysRemaining dagen resterend"
+                    Message = "$DaysRemaining days remaining"
                 }
             }
         }
@@ -283,7 +283,7 @@ function Test-AppRegistrationValidity {
     }
 }
 
-# Helper functie om KB nummers en update identificaties te extraheren
+# Helper function to extract KB numbers and update identifications
 function Get-CleanUpdateIdentifier {
     param(
         [string]$UpdateDisplayName
@@ -326,7 +326,7 @@ function Get-CleanUpdateIdentifier {
     }
 }
 
-# Helper functie om de nieuwste KB updates online op te halen
+# Helper function to retrieve the latest KB updates online
 function Get-LatestKBUpdate {
     param(
         [string]$WindowsVersion,  # bijv. "Windows 10", "Windows 11"
@@ -733,14 +733,14 @@ function Get-MissingUpdatesFromKBDatabase {
         if ($buildMapping.builds) {
             $allBuilds = @()
             
-            # KRITIEK: Alleen vergelijken binnen DEZELFDE Windows versie (24H2, 25H2, etc.)
+            # Alleen vergelijken binnen dezelfde Windows versie (24H2, 25H2, etc.)
             # Verzamel alleen builds die tot dezelfde major build EN Windows versie behoren
             foreach ($buildKey in $buildMapping.builds.PSObject.Properties.Name) {
                 if ($buildKey -match "$majorBuild\.(\d+)") {
                     $buildMajor = [int]$majorBuild
                     $buildMinor = [int]$matches[1]
                     
-                    # EXTRA VEILIGHEID: Valideer dat build echt bij deze Windows versie hoort
+                    # Valideer dat build echt bij deze Windows versie hoort
                     $buildBelongsToThisVersion = $false
                     switch ($windowsVersion) {
                         "windows10" { $buildBelongsToThisVersion = ($buildMajor -lt 22000) }
@@ -765,7 +765,7 @@ function Get-MissingUpdatesFromKBDatabase {
             # Sorteer builds op minor versie (oplopend)
             $sortedBuilds = $allBuilds | Sort-Object MinorVersion
             
-            # AANGEPAST: Vind alleen nieuwere builds binnen DEZELFDE major build reeks
+            # Vind alleen nieuwere builds binnen dezelfde major build reeks
             # Dit voorkomt dat 24H2 machines 25H2 updates als "missing" krijgen
             $targetBuilds = $sortedBuilds | Where-Object { $_.MinorVersion -gt $minorBuild }
             
