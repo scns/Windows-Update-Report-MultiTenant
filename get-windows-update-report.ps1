@@ -654,6 +654,33 @@ function Get-CleanUpdateIdentifier {
     return ""
 }
 
+# Functie om Windows versie te bepalen op basis van build nummer
+function Get-WindowsVersionFromBuild {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$OSVersion
+    )
+    
+    # Extract build number from OS version (e.g., "10.0.26100.2454" -> "26100")
+    if ($OSVersion -match '10\.0\.(\d+)\.') {
+        $buildNumber = [int]$matches[1]
+        
+        # Bepaal Windows versie op basis van build nummer ranges
+        if ($buildNumber -ge 26200) {
+            return "Windows 11 25H2"
+        } elseif ($buildNumber -ge 26000 -and $buildNumber -le 26199) {
+            return "Windows 11 24H2" 
+        } elseif ($buildNumber -ge 22000 -and $buildNumber -le 25999) {
+            return "Windows 11 22H2"
+        } elseif ($buildNumber -ge 19000 -and $buildNumber -le 21999) {
+            return "Windows 10"
+        }
+    }
+    
+    # Fallback voor onbekende versies
+    return "Windows (Onbekend)"
+}
+
 # Functie om missing updates te bepalen op basis van KB database
 function Get-MissingUpdatesFromKBDatabase {
     param(
@@ -675,15 +702,15 @@ function Get-MissingUpdatesFromKBDatabase {
         $minorBuild = [int]$matches[2]
         $currentBuildString = "$majorBuild.$minorBuild"
         
-        # Bepaal Windows versie en subversie
+        # Bepaal Windows versie en subversie (STRIKT gescheiden per versie-familie)
         if ([int]$majorBuild -lt 22000) {
             $windowsVersion = "windows10"
         } elseif ([int]$majorBuild -ge 26200) {
-            $windowsVersion = "windows11_25h2"
+            $windowsVersion = "windows11_25h2"  # 25H2: alleen 26200+ builds
         } elseif ([int]$majorBuild -ge 26000) {
-            $windowsVersion = "windows11_24h2"
+            $windowsVersion = "windows11_24h2"  # 24H2: alleen 26000-26199 builds  
         } else {
-            $windowsVersion = "windows11_22h2"
+            $windowsVersion = "windows11_22h2"  # 22H2/23H2: alleen 22000-25999 builds
         }
         
         # Toegang tot KB mapping
@@ -696,7 +723,7 @@ function Get-MissingUpdatesFromKBDatabase {
         
         # Zoek de juiste major build mapping
         if (-not $versionMappings.$majorBuild) {
-            Write-Verbose "No KB mapping found for build $majorBuild"
+            Write-Verbose "No KB mapping found for build $majorBuild in $windowsVersion"
             return @()
         }
         
@@ -706,14 +733,31 @@ function Get-MissingUpdatesFromKBDatabase {
         if ($buildMapping.builds) {
             $allBuilds = @()
             
-            # Verzamel alle builds en sorteer op minor versie
+            # KRITIEK: Alleen vergelijken binnen DEZELFDE Windows versie (24H2, 25H2, etc.)
+            # Verzamel alleen builds die tot dezelfde major build EN Windows versie behoren
             foreach ($buildKey in $buildMapping.builds.PSObject.Properties.Name) {
                 if ($buildKey -match "$majorBuild\.(\d+)") {
-                    $allBuilds += @{
-                        Build = $buildKey
-                        MinorVersion = [int]$matches[1]
-                        KB = $buildMapping.builds.$buildKey.kb
-                        Date = $buildMapping.builds.$buildKey.date
+                    $buildMajor = [int]$majorBuild
+                    $buildMinor = [int]$matches[1]
+                    
+                    # EXTRA VEILIGHEID: Valideer dat build echt bij deze Windows versie hoort
+                    $buildBelongsToThisVersion = $false
+                    switch ($windowsVersion) {
+                        "windows10" { $buildBelongsToThisVersion = ($buildMajor -lt 22000) }
+                        "windows11_22h2" { $buildBelongsToThisVersion = ($buildMajor -ge 22000 -and $buildMajor -lt 26000) }
+                        "windows11_24h2" { $buildBelongsToThisVersion = ($buildMajor -ge 26000 -and $buildMajor -lt 26200) }
+                        "windows11_25h2" { $buildBelongsToThisVersion = ($buildMajor -ge 26200) }
+                    }
+                    
+                    if ($buildBelongsToThisVersion) {
+                        $allBuilds += @{
+                            Build = $buildKey
+                            MinorVersion = $buildMinor
+                            KB = $buildMapping.builds.$buildKey.kb
+                            Date = $buildMapping.builds.$buildKey.date
+                        }
+                    } else {
+                        Write-Verbose "Skipping build $buildKey - belongs to different Windows version"
                     }
                 }
             }
@@ -721,10 +765,11 @@ function Get-MissingUpdatesFromKBDatabase {
             # Sorteer builds op minor versie (oplopend)
             $sortedBuilds = $allBuilds | Sort-Object MinorVersion
             
-            # Vind de hoogste build die hoger is dan huidige build
+            # AANGEPAST: Vind alleen nieuwere builds binnen DEZELFDE major build reeks
+            # Dit voorkomt dat 24H2 machines 25H2 updates als "missing" krijgen
             $targetBuilds = $sortedBuilds | Where-Object { $_.MinorVersion -gt $minorBuild }
             
-            # Verzamel unieke KB nummers van alle hogere builds
+            # Verzamel unieke KB nummers van alle hogere builds (binnen dezelfde OS versie)
             $uniqueKBs = @()
             foreach ($build in $targetBuilds) {
                 if ($build.KB -and $uniqueKBs -notcontains $build.KB) {
@@ -734,7 +779,14 @@ function Get-MissingUpdatesFromKBDatabase {
             
             $missingKBs = $uniqueKBs
             
-            Write-Verbose "Current build: $currentBuildString, Found $($targetBuilds.Count) newer builds, Missing KBs: $($missingKBs -join ', ')"
+            if ($missingKBs.Count -gt 0) {
+                Write-Verbose "$windowsVersion - Current: $currentBuildString → Missing KBs: $($missingKBs -join ', ')"
+            } else {
+                Write-Verbose "$windowsVersion - Current: $currentBuildString → Up-to-date"
+            }
+        } else {
+            # Geen specifieke builds beschikbaar - machine is waarschijnlijk up-to-date
+            Write-Verbose "$windowsVersion - No specific builds available for $majorBuild, assuming up-to-date"
         }
         
     } catch {
@@ -1196,84 +1248,114 @@ foreach ($cred in $data.LoginCredentials) {
         
         # === OS VERSIE ANALYSE ===
         # Analyseer OS versies om machines met verouderde builds te identificeren
+        # Gebruik versie-specifieke logica om cross-version vergelijking te voorkomen
         $OSVersionGroups = $ResultsArray | Where-Object { $_.OSVersion -and $_.OSVersion -ne "Onbekend" } | 
                           Group-Object OSVersion | 
                           Sort-Object Name -Descending
         
+        # Bepaal nieuwste versie per Windows versie (22H2/24H2/25H2) om cross-version vergelijking te voorkomen
+        $LatestVersionPerWindowsVersion = @{}
+        
+        foreach ($group in $OSVersionGroups) {
+            $osVersion = $group.Name
+            $windowsVersion = Get-WindowsVersionFromBuild $osVersion
+            
+            if (-not $LatestVersionPerWindowsVersion.ContainsKey($windowsVersion) -or 
+                $osVersion -gt $LatestVersionPerWindowsVersion[$windowsVersion]) {
+                $LatestVersionPerWindowsVersion[$windowsVersion] = $osVersion
+            }
+        }
+        
         if ($OSVersionGroups.Count -gt 1) {
-            $LatestOSVersion = $OSVersionGroups[0].Name
-            $LatestCount = $OSVersionGroups[0].Count
             $TotalMachines = ($OSVersionGroups | Measure-Object Count -Sum).Sum
             
             Write-Host "`n=== OS VERSIE ANALYSE ===" -ForegroundColor Yellow
-            Write-Host "Nieuwste OS versie gedetecteerd: $LatestOSVersion ($LatestCount machines)" -ForegroundColor Green
             Write-Host "Totaal machines: $TotalMachines" -ForegroundColor Cyan
+            
+            # Toon nieuwste versie per Windows versie
+            Write-Host "`nNieuwste versie per Windows versie:" -ForegroundColor Green
+            foreach ($windowsVersion in $LatestVersionPerWindowsVersion.Keys | Sort-Object) {
+                $latestBuild = $LatestVersionPerWindowsVersion[$windowsVersion]
+                $machineCount = ($OSVersionGroups | Where-Object Name -eq $latestBuild).Count
+                Write-Host "  $windowsVersion`: $latestBuild ($machineCount machines)" -ForegroundColor Green
+            }
+            
             Write-Host "`nVerdeling per OS versie:" -ForegroundColor Cyan
             
             foreach ($group in $OSVersionGroups) {
                 $percentage = [Math]::Round(($group.Count / $TotalMachines) * 100, 1)
-                if ($group.Name -eq $LatestOSVersion) {
-                    Write-Host "  [OK] $($group.Name): $($group.Count) machines ($percentage%)" -ForegroundColor Green
+                $windowsVersion = Get-WindowsVersionFromBuild $group.Name
+                $latestForThisVersion = $LatestVersionPerWindowsVersion[$windowsVersion]
+                
+                if ($group.Name -eq $latestForThisVersion) {
+                    Write-Host "  [OK] $($group.Name): $($group.Count) machines ($percentage%) - $windowsVersion up-to-date" -ForegroundColor Green
                 } else {
-                    Write-Host "  [WARNING] $($group.Name): $($group.Count) machines ($percentage%) - VEROUDERD" -ForegroundColor Yellow
+                    Write-Host "  [WARNING] $($group.Name): $($group.Count) machines ($percentage%) - $windowsVersion VEROUDERD" -ForegroundColor Yellow
                 }
             }
             
-            # Update de resultaten voor machines met verouderde OS versies
+            # Update de resultaten voor machines met verouderde OS versies - gebruik versie-specifieke logica
             $UpdatedResults = @()
             foreach ($result in $ResultsArray) {
                 $newResult = $result.PSObject.Copy()
                 $newResult | Add-Member -MemberType NoteProperty -Name "KBMethod" -Value "N/A" -Force
                 
-                if ($result.OSVersion -and $result.OSVersion -ne "Onbekend" -and $result.OSVersion -ne $LatestOSVersion) {
-                    # Machines met verouderde OS versie - update hun status
-                    $originalStatus = $result.UpdateStatus
-                    $newResult.UpdateStatus = "Verouderde OS versie"
+                # Bepaal de Windows versie van dit apparaat en de nieuwste versie voor die Windows versie
+                if ($result.OSVersion -and $result.OSVersion -ne "Onbekend") {
+                    $deviceWindowsVersion = Get-WindowsVersionFromBuild $result.OSVersion
+                    $latestForThisWindowsVersion = $LatestVersionPerWindowsVersion[$deviceWindowsVersion]
                     
-                    # Voeg informatie toe over de verouderde OS versie
-                    $versionDifference = "Huidige: $($result.OSVersion), Nieuwste: $LatestOSVersion"
-                    $newResult.MissingUpdates += "LET OP: Verouderde OS versie - $versionDifference (was: $originalStatus)"
-                    
-                    # Probeer te bepalen welke cumulative update er nodig is op basis van OS versie
-                    if ($result.OSVersion -and $LatestOSVersion) {
-                        $currentBuild = $result.OSVersion -replace '.*\.(\d+)$', '$1'
-                        $latestBuild = $LatestOSVersion -replace '.*\.(\d+)$', '$1'
+                    # Vergelijk alleen met de nieuwste versie binnen dezelfde Windows versie (22H2/24H2/25H2)
+                    if ($result.OSVersion -ne $latestForThisWindowsVersion) {
+                        # Machines met verouderde OS versie binnen hun Windows versie - update hun status
+                        $originalStatus = $result.UpdateStatus
+                        $newResult.UpdateStatus = "Verouderde OS versie"
                         
-                        # Voor Windows 11/10 updates - haal KB nummers online op
-                        if ($currentBuild -match '^\d+$' -and $latestBuild -match '^\d+$') {
-                            $buildDifference = [int]$latestBuild - [int]$currentBuild
-                            if ($buildDifference -gt 0) {
-                                # Gebruik KB database om missing updates te bepalen
-                                Write-Verbose "Looking up KB information for OS version: $($result.OSVersion)"
-                                $kbMappingCache = $Global:CachedKBMapping
-                                $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $result.OSVersion -KBMappingCache $kbMappingCache
-                                if ($missingKBsFromDB.Count -gt 0) {
-                                    $newResult.ActualMissingUpdates += $missingKBsFromDB
-                                    $newResult.KBMethod = "KB Database"
-                                    Write-Verbose "Found missing KBs via KB Database: $($missingKBsFromDB -join ', ')"
-                                } else {
-                                    # Geen updates gevonden in KB database
-                                    $newResult.KBMethod = "KB Database (up-to-date)"
-                                    Write-Verbose "No missing updates found in KB Database for $($result.OSVersion)"
+                        # Voeg informatie toe over de verouderde OS versie (binnen dezelfde Windows versie)
+                        $versionDifference = "Huidige: $($result.OSVersion), Nieuwste voor $deviceWindowsVersion`: $latestForThisWindowsVersion"
+                        $newResult.MissingUpdates += "LET OP: Verouderde OS versie - $versionDifference (was: $originalStatus)"
+                        
+                        # Probeer te bepalen welke cumulative update er nodig is op basis van OS versie
+                        if ($result.OSVersion -and $latestForThisWindowsVersion) {
+                            $currentBuild = $result.OSVersion -replace '.*\.(\d+)$', '$1'
+                            $latestBuild = $latestForThisWindowsVersion -replace '.*\.(\d+)$', '$1'
+                        
+                            # Voor Windows 11/10 updates - haal KB nummers online op
+                            if ($currentBuild -match '^\d+$' -and $latestBuild -match '^\d+$') {
+                                $buildDifference = [int]$latestBuild - [int]$currentBuild
+                                if ($buildDifference -gt 0) {
+                                    # Gebruik KB database om missing updates te bepalen
+                                    Write-Verbose "Looking up KB information for OS version: $($result.OSVersion)"
+                                    $kbMappingCache = $Global:CachedKBMapping
+                                    $missingKBsFromDB = Get-MissingUpdatesFromKBDatabase -CurrentOSVersion $result.OSVersion -KBMappingCache $kbMappingCache
+                                    if ($missingKBsFromDB.Count -gt 0) {
+                                        $newResult.ActualMissingUpdates += $missingKBsFromDB
+                                        $newResult.KBMethod = "KB Database"
+                                        Write-Verbose "Found missing KBs via KB Database: $($missingKBsFromDB -join ', ')"
+                                    } else {
+                                        # Geen updates gevonden in KB database
+                                        $newResult.KBMethod = "KB Database (up-to-date)"
+                                        Write-Verbose "No missing updates found in KB Database for $($result.OSVersion)"
+                                    }
                                 }
                             }
                         }
-                    }
-                    
-                    # Bepaal het aantal missing updates voor verouderde OS versie (unieke KB's)
-                    $OSUpdateCount = if ($newResult.ActualMissingUpdates -and $newResult.ActualMissingUpdates.Count -gt 0) { 
-                        # Tel unieke KB nummers
-                        $uniqueKBs = if ($newResult.ActualMissingUpdates -is [System.Array]) { 
-                            $newResult.ActualMissingUpdates | Select-Object -Unique
+                        
+                        # Bepaal het aantal missing updates voor verouderde OS versie (unieke KB's)
+                        $OSUpdateCount = if ($newResult.ActualMissingUpdates -and $newResult.ActualMissingUpdates.Count -gt 0) { 
+                            # Tel unieke KB nummers
+                            $uniqueKBs = if ($newResult.ActualMissingUpdates -is [System.Array]) { 
+                                $newResult.ActualMissingUpdates | Select-Object -Unique
+                            } else { 
+                                @($newResult.ActualMissingUpdates)
+                            }
+                            $uniqueKBs.Count
                         } else { 
-                            @($newResult.ActualMissingUpdates)
+                            1  # Minimaal één update voor verouderde OS versie
                         }
-                        $uniqueKBs.Count
-                    } else { 
-                        1  # Minimaal één update voor verouderde OS versie
+                        
+                        $newResult.Count = $OSUpdateCount
                     }
-                    
-                    $newResult.Count = $OSUpdateCount
                 }
                 
                 $UpdatedResults += $newResult
