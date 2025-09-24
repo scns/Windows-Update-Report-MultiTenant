@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2025-09-05",
-  "version": "2.1",
+  "lastUpdated": "2025-09-24",
+  "version": "2.2",
   "description": "Windows KB Update Mapping voor Build Numbers",
   "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
   "warnings": {
@@ -42,6 +42,21 @@
             "date": "2025-07",
             "releaseDate": "2025-07-09",
             "description": "July 2025 Update"
+          }
+        }
+      },
+      "26200": {
+        "kb": "KB5066426",
+        "date": "2025-09",
+        "title": "Cumulative Update for Windows 11",
+        "version": "25H2",
+        "releaseDate": "2025-09-24",
+        "builds": {
+          "26200.6584": {
+            "kb": "KB5066426",
+            "date": "2025-09",
+            "releaseDate": "2025-09-24",
+            "description": "September 2025 - Windows 11 25H2 Initial Release"
           }
         }
       },
