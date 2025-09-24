@@ -293,11 +293,11 @@ function Get-CleanUpdateIdentifier {
         return ""
     }
     
-    # Zoek naar KB nummers (KB gevolgd door cijfers)
+    # Search for KB numbers (KB followed by digits)
     if ($UpdateDisplayName -match "(KB\d+)") {
         $KBNumber = $matches[1]
         
-        # Zoek ook naar datum in formaat YYYY-MM
+        # Also search for date in YYYY-MM format
         if ($UpdateDisplayName -match "(\d{4}-\d{2})") {
             $DatePart = $matches[1]
             return "$DatePart Cumulative Update ($KBNumber)"
@@ -306,7 +306,7 @@ function Get-CleanUpdateIdentifier {
         }
     }
     
-    # Als er geen KB nummer is, probeer een verkorte versie van de naam
+    # If there's no KB number, try a shortened version of the name
     if ($UpdateDisplayName -match "(\d{4}-\d{2}).*[Cc]umulative") {
         $DatePart = $matches[1]
         return "$DatePart Cumulative Update"
@@ -317,7 +317,7 @@ function Get-CleanUpdateIdentifier {
     } elseif ($UpdateDisplayName -match "Feature.*Update") {
         return "Feature Update"
     } else {
-        # Fallback: gebruik eerste 30 karakters van de naam
+        # Fallback: use first 30 characters of the name
         $shortName = $UpdateDisplayName.Substring(0, [Math]::Min($UpdateDisplayName.Length, 30))
         if ($UpdateDisplayName.Length -gt 30) {
             $shortName += "..."
@@ -336,7 +336,7 @@ function Get-LatestKBUpdate {
     )
     
     try {
-        # Bepaal Windows versie op basis van build nummer
+        # Determine Windows version based on build number
         $WindowsProduct = "Windows 10"
         if ([int]$TargetBuild -ge 22000) {
             $WindowsProduct = "Windows 11"
@@ -362,8 +362,8 @@ function Get-LatestKBUpdate {
             $OnlineMapping = $kbMappingResult.Data
             Write-Verbose "KB mapping loaded from: $($kbMappingResult.Source)"
             
-            # Zoek in de juiste Windows versie sectie
-            $MajorBuildNumber = [int]($TargetBuild -replace '\.\d+$', '')  # Verwijder minor build nummer
+            # Search in the correct Windows version section
+            $MajorBuildNumber = [int]($TargetBuild -replace '\.\d+$', '')  # Remove minor build number
             $MappingSection = if ($MajorBuildNumber -lt 22000) {
                 $OnlineMapping.mappings.windows10
             } elseif ($MajorBuildNumber -ge 26200) {
@@ -374,21 +374,21 @@ function Get-LatestKBUpdate {
                 $OnlineMapping.mappings.windows11_22h2
             }
             
-            # Zoek exacte match (inclusief minor builds)
+            # Search for exact match (including minor builds)
             $FoundMapping = $null
-            $MajorBuild = $TargetBuild -replace '\.\d+$', ''  # Verwijder minor build nummer
+            $MajorBuild = $TargetBuild -replace '\.\d+$', ''  # Remove minor build number
             
-            # Eerst: zoek exacte match voor volledige build (inclusief minor)
+            # First: search for exact match for complete build (including minor)
             if ($MappingSection.$TargetBuild) {
                 $FoundMapping = $MappingSection.$TargetBuild
                 Write-Verbose "Found exact build match for: $TargetBuild"
             }
-            # Tweede: zoek in builds sub-object voor minor builds
+            # Second: search in builds sub-object for minor builds
             elseif ($MappingSection.$MajorBuild -and $MappingSection.$MajorBuild.builds -and $MappingSection.$MajorBuild.builds.$TargetBuild) {
                 $FoundMapping = $MappingSection.$MajorBuild.builds.$TargetBuild
                 Write-Verbose "Found minor build match for: $TargetBuild in $MajorBuild.builds"
             }
-            # Derde: zoek major build als fallback
+            # Third: search major build as fallback
             elseif ($MappingSection.$MajorBuild) {
                 $FoundMapping = $MappingSection.$MajorBuild
                 Write-Verbose "Found major build match for: $MajorBuild (fallback from $TargetBuild)"
@@ -449,10 +449,10 @@ function Get-LatestKBUpdate {
             Write-Verbose "Failed to load KB mapping: $($kbMappingResult.Error)"
         }
         
-        # Methode 2: Fallback naar lokale KB mapping
+        # Method 2: Fallback to local KB mapping
         if (-not $KBNumber -and ($Config.kbMapping.fallbackToLocalMapping -ne $false)) {
             Write-Verbose "Using fallback local KB mapping"
-            # Gebruik bekende patronen voor recente builds (bijgewerkt tot september 2025)
+            # Use known patterns for recent builds (updated until September 2025)
             $LocalKBMappings = @{
                 # Windows 11 24H2 (2024-2025) - September updates
                 "26100.5074" = @{ KB = "KB5065522"; Date = "2025-09"; Title = "Cumulative Update (Minor)" }
@@ -609,7 +609,7 @@ function Get-LatestKBUpdate {
     }
 }
 
-# Functie om alleen KB nummers te extraheren uit Windows Update displayName
+# Function to extract only KB numbers from Windows Update displayName
 function Get-CleanUpdateIdentifier {
     param(
         [Parameter(Mandatory=$true)]
@@ -654,7 +654,7 @@ function Get-CleanUpdateIdentifier {
     return ""
 }
 
-# Functie om Windows versie te bepalen op basis van build nummer
+# Function to determine Windows version based on build number
 function Get-WindowsVersionFromBuild {
     param(
         [Parameter(Mandatory=$true)]
@@ -665,7 +665,7 @@ function Get-WindowsVersionFromBuild {
     if ($OSVersion -match '10\.0\.(\d+)\.') {
         $buildNumber = [int]$matches[1]
         
-        # Bepaal Windows versie op basis van build nummer ranges
+        # Determine Windows version based on build number ranges
         if ($buildNumber -ge 26200) {
             return "Windows 11 25H2"
         } elseif ($buildNumber -ge 26000 -and $buildNumber -le 26199) {
@@ -681,7 +681,7 @@ function Get-WindowsVersionFromBuild {
     return "Windows (Onbekend)"
 }
 
-# Functie om missing updates te bepalen op basis van KB database
+# Function to determine missing updates based on KB database
 function Get-MissingUpdatesFromKBDatabase {
     param(
         [Parameter(Mandatory=$true)]
