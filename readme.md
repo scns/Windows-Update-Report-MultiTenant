@@ -9,7 +9,7 @@
 
 Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Update en device compliance status voor meerdere tenants via Microsoft Graph. Het resultaat is een professioneel HTML-dashboard met filterbare tabellen, grafieken, compliance monitoring en gedetailleerde KB informatie.
 
-## 🎯 Versie 3.0 Hoogtepunten
+## 🎯 Versie 3.1 Hoogtepunten
 
 - **🛡️ Device Compliance Integration**: Volledige Microsoft Graph compliance monitoring
 - **🔄 Intelligent Backup System**: Automatische backups met retention management  
