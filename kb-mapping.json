@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2025-10-15",
-  "version": "2.3",
+  "lastUpdated": "2025-10-16",
+  "version": "3.1.2",
   "description": "Windows KB Update Mapping voor Build Numbers",
   "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
   "warnings": {
@@ -69,16 +69,16 @@
     },
     "windows11_24h2": {
       "26100": {
-        "kb": "KB5044384",
+        "kb": "KB5066835",
         "date": "2025-10",
         "title": "Cumulative Update for Windows 11 24H2",
         "version": "24H2",
-        "releaseDate": "2025-10-08",
+        "releaseDate": "2025-10-14",
         "builds": {
-          "26100.2033": {
-            "kb": "KB5044384",
+          "26100.6899": {
+            "kb": "KB5066835",
             "date": "2025-10",
-            "releaseDate": "2025-10-08",
+            "releaseDate": "2025-10-14",
             "description": "October 2025 Update"
           },
           "26100.1882": {
@@ -102,25 +102,25 @@
         }
       },
       "26010": {
-        "kb": "KB5044384",
+        "kb": "KB5066835",
         "date": "2025-10",
         "title": "Cumulative Update for Windows 11 24H2",
         "version": "24H2",
-        "releaseDate": "2025-10-08"
+        "releaseDate": "2025-10-14"
       }
     },
     "windows11_25h2": {
       "26200": {
-        "kb": "KB5044384",
+        "kb": "KB5066835",
         "date": "2025-10",
         "title": "Cumulative Update for Windows 11 25H2",
         "version": "25H2",
-        "releaseDate": "2025-10-08",
+        "releaseDate": "2025-10-14",
         "builds": {
-          "26200.2033": {
-            "kb": "KB5044384",
+          "26200.6899": {
+            "kb": "KB5066835",
             "date": "2025-10",
-            "releaseDate": "2025-10-08",
+            "releaseDate": "2025-10-14",
             "description": "October 2025 Update"
           },
           "26200.1882": {
