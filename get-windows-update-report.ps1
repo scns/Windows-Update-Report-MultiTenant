@@ -2395,6 +2395,10 @@ $Html = @"
     <!-- App Registrations Tab -->
     <div id="AppRegistrations" class="tabcontent" style="display:none">
         <h2>App Registration Status Overview</h2>
+        <div class="export-buttons" style="margin-bottom: 10px;">
+            <button onclick="exportTableToCSV('appRegTable', 'App_Registrations-full.csv', false)">Exporteren volledige tabel</button>
+            <button onclick="exportTableToCSV('appRegTable', 'App_Registrations-filtered.csv', true)">Exporteren gefilterde rijen</button>
+        </div>
         <table id="appRegTable" class="display" style="width:100%">
             <thead>
                 <tr>
@@ -2480,6 +2484,12 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         $(if ($KBMappingForHTML.Success -and $KBMappingForHTML.Data) {
             $kbEntries = @()
             
+            # Export buttons HTML
+            $exportButtonsHtml = "<div class='export-buttons' style='margin-bottom: 10px;'>
+                <button onclick=`"exportTableToCSV('kbMappingTable', 'KB_Mapping_Database-full.csv', false)`">Exporteren volledige tabel</button>
+                <button onclick=`"exportTableToCSV('kbMappingTable', 'KB_Mapping_Database-filtered.csv', true)`">Exporteren gefilterde rijen</button>
+            </div>"
+            
             # Verwerk Windows 11 25H2 mappings
             if ($KBMappingForHTML.Data.mappings.windows11_25h2) {
                 foreach ($baseBuild in ($KBMappingForHTML.Data.mappings.windows11_25h2.PSObject.Properties.Name | Sort-Object -Descending)) {
@@ -2562,7 +2572,8 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                 }
             }
             
-            "<table id='kbMappingTable' class='display' style='width:100%'>
+            "$exportButtonsHtml
+            <table id='kbMappingTable' class='display' style='width:100%'>
                 <thead>
                     <tr>
                         <th>Build Number</th>
