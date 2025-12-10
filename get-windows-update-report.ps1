@@ -1951,7 +1951,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 "Synchronisatie vereist" { "color: #17a2b8; font-weight: bold;" }
                 "Error" { "color: #dc3545; font-weight: bold;" }
                 "Handmatige controle vereist" { "color: #6f42c1;" }
-                default { "color: black;" }
+                default { "color: inherit;" }
             }
             
             # Compliance Status kleuren
@@ -2032,7 +2032,74 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td style='$OfficeColor'>$($row.'Office Version')</td><td>$OfficeChannel</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            # Windows versie naam en support status bepalen
+            $WindowsVersionName = ""
+            $WindowsColor = "color: #6c757d;"  # Default grijs
+            $OSVersionText = $row.'OS Version'
+            
+            if ($OSVersionText -and $OSVersionText -ne "Onbekend") {
+                # Parse build number (bijv. "10.0.26100.2454" → "26100")
+                if ($OSVersionText -match '10\.0\.(\d+)\.') {
+                    $buildNumber = [int]$matches[1]
+                    
+                    # Windows 11 24H2 (26100)
+                    if ($buildNumber -ge 26100 -and $buildNumber -lt 26200) {
+                        $WindowsVersionName = "W11 24H2"
+                        $WindowsColor = "color: #28a745; font-weight: bold;"  # Groen - In support tot oktober 2026
+                    }
+                    # Windows 11 25H2 (26200)
+                    elseif ($buildNumber -ge 26200) {
+                        $WindowsVersionName = "W11 25H2"
+                        $WindowsColor = "color: #28a745; font-weight: bold;"  # Groen - Nieuwste versie
+                    }
+                    # Windows 11 23H2 (22631)
+                    elseif ($buildNumber -ge 22631 -and $buildNumber -lt 26100) {
+                        $WindowsVersionName = "W11 23H2"
+                        $WindowsColor = "color: #28a745;"  # Groen - In support tot november 2025
+                    }
+                    # Windows 11 22H2 (22621)
+                    elseif ($buildNumber -ge 22621 -and $buildNumber -lt 22631) {
+                        $WindowsVersionName = "W11 22H2"
+                        $WindowsColor = "color: #ffc107;"  # Oranje - EOL oktober 2024 (Pro), oktober 2025 (Enterprise)
+                    }
+                    # Windows 11 21H2 (22000)
+                    elseif ($buildNumber -ge 22000 -and $buildNumber -lt 22621) {
+                        $WindowsVersionName = "W11 21H2"
+                        $WindowsColor = "color: #dc3545; font-weight: bold;"  # Rood - EOL oktober 2023
+                    }
+                    # Windows 10 22H2 (19045)
+                    elseif ($buildNumber -ge 19045) {
+                        $WindowsVersionName = "W10 22H2"
+                        $WindowsColor = "color: #ffc107;"  # Oranje - EOL oktober 2025
+                    }
+                    # Windows 10 21H2 (19044)
+                    elseif ($buildNumber -ge 19044 -and $buildNumber -lt 19045) {
+                        $WindowsVersionName = "W10 21H2"
+                        $WindowsColor = "color: #dc3545; font-weight: bold;"  # Rood - EOL juni 2023
+                    }
+                    # Windows 10 21H1 (19043)
+                    elseif ($buildNumber -ge 19043 -and $buildNumber -lt 19044) {
+                        $WindowsVersionName = "W10 21H1"
+                        $WindowsColor = "color: #dc3545; font-weight: bold;"  # Rood - EOL december 2022
+                    }
+                    # Windows 10 20H2 (19042)
+                    elseif ($buildNumber -ge 19042 -and $buildNumber -lt 19043) {
+                        $WindowsVersionName = "W10 20H2"
+                        $WindowsColor = "color: #dc3545; font-weight: bold;"  # Rood - EOL mei 2022
+                    }
+                    # Oudere Windows 10 versies
+                    elseif ($buildNumber -ge 10240 -and $buildNumber -lt 19042) {
+                        $WindowsVersionName = "W10 (oud)"
+                        $WindowsColor = "color: #dc3545; font-weight: bold;"  # Rood - EOL
+                    }
+                    else {
+                        $WindowsVersionName = "Onbekend"
+                        $WindowsColor = "color: #6c757d;"
+                    }
+                }
+            }
+            
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td style='$WindowsColor'>$OSVersionText</td><td>$WindowsVersionName</td><td style='$OfficeColor'>$($row.'Office Version')</td><td>$OfficeChannel</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -2116,6 +2183,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>Compliance Status</th>
                     <th>Missing Updates</th>
                     <th>OS Version</th>
+                    <th>Windows Edition</th>
                     <th>Office Version</th>
                     <th>Office Channel</th>
                     <th>Count</th>
