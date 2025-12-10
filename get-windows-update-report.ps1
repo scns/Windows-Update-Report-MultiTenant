@@ -1951,7 +1951,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 "Synchronisatie vereist" { "color: #17a2b8; font-weight: bold;" }
                 "Error" { "color: #dc3545; font-weight: bold;" }
                 "Handmatige controle vereist" { "color: #6f42c1;" }
-                default { "color: black;" }
+                default { "color: inherit;" }
             }
             
             # Compliance Status kleuren
