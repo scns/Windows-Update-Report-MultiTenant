@@ -101,6 +101,11 @@ $Global:CachedKBMapping = $null
 $Global:KBMappingCacheTime = $null
 $Global:KBMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
 
+# Globale cache voor Office version mapping
+$Global:CachedOfficeMapping = $null
+$Global:OfficeMappingCacheTime = $null
+$Global:OfficeMappingCacheValidMinutes = 30  # Cache geldig voor 30 minuten
+
 # Timezone offset uit config (standaard 0 voor UTC)
 $TimezoneOffsetHours = if ($config.timezoneOffsetHours) { $config.timezoneOffsetHours } else { 0 }
 Write-Host "Timezone offset: UTC+$TimezoneOffsetHours uur" -ForegroundColor Cyan
@@ -162,6 +167,90 @@ function Get-CachedKBMapping {
             Source = "Failed"
             Error = $_.Exception.Message
         }
+    }
+}
+
+# Functie om Office version mapping te laden en cachen
+function Get-CachedOfficeMapping {
+    param(
+        [string]$OnlineOfficeUrl,
+        [string]$LocalOfficePath = ".\office-version-mapping.json",
+        [int]$TimeoutSeconds = 10,
+        [int]$CacheValidMinutes = 30
+    )
+    
+    # Controleer of cache nog geldig is
+    $now = Get-Date
+    if ($Global:CachedOfficeMapping -and $Global:OfficeMappingCacheTime) {
+        $cacheAge = ($now - $Global:OfficeMappingCacheTime).TotalMinutes
+        if ($cacheAge -lt $CacheValidMinutes) {
+            Write-Verbose "Using cached Office mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+            return @{
+                Success = $true
+                Data = $Global:CachedOfficeMapping
+                Source = "Cache"
+            }
+        }
+    }
+    
+    # Probeer eerst lokaal bestand te laden
+    if (Test-Path $LocalOfficePath) {
+        try {
+            Write-Verbose "Loading Office mapping from local file: $LocalOfficePath"
+            $localMapping = Get-Content -Path $LocalOfficePath -Raw | ConvertFrom-Json
+            
+            # Update cache
+            $Global:CachedOfficeMapping = $localMapping
+            $Global:OfficeMappingCacheTime = $now
+            
+            Write-Verbose "Office mapping successfully cached from local file (valid for $CacheValidMinutes minutes)"
+            return @{
+                Success = $true
+                Data = $localMapping
+                Source = "LocalFile"
+            }
+        } catch {
+            Write-Verbose "Failed to load local Office mapping: $($_.Exception.Message)"
+        }
+    }
+    
+    # Probeer online op te halen als fallback
+    if ($OnlineOfficeUrl) {
+        try {
+            Write-Verbose "Fetching fresh Office mapping from: $OnlineOfficeUrl (timeout: $TimeoutSeconds seconds)"
+            $onlineMapping = Invoke-RestMethod -Uri $OnlineOfficeUrl -Method GET -TimeoutSec $TimeoutSeconds -ErrorAction Stop
+            
+            # Update cache
+            $Global:CachedOfficeMapping = $onlineMapping
+            $Global:OfficeMappingCacheTime = $now
+            
+            Write-Verbose "Office mapping successfully cached (valid for $CacheValidMinutes minutes)"
+            return @{
+                Success = $true
+                Data = $onlineMapping
+                Source = "Online"
+            }
+        } catch {
+            Write-Verbose "Failed to fetch online Office mapping: $($_.Exception.Message)"
+        }
+    }
+    
+    # Als er een oude cache is, gebruik die als fallback
+    if ($Global:CachedOfficeMapping) {
+        $cacheAge = ($now - $Global:OfficeMappingCacheTime).TotalMinutes
+        Write-Verbose "Using expired cached Office mapping (cached $([Math]::Round($cacheAge, 1)) minutes ago)"
+        return @{
+            Success = $true
+            Data = $Global:CachedOfficeMapping
+            Source = "ExpiredCache"
+        }
+    }
+    
+    return @{
+        Success = $false
+        Data = $null
+        Source = "Failed"
+        Error = "Could not load Office mapping from any source"
     }
 }
 
@@ -866,6 +955,48 @@ $data = $json | ConvertFrom-Json
 # Verzamel App Registration informatie
 $AppRegistrationData = @{}
 
+# Verzamel Office Version Mapping informatie voor HTML rapport
+Write-Host "Ophalen Office Version Mapping informatie voor HTML rapport..." -ForegroundColor White
+$OfficeMappingForHTML = $null
+try {
+    $onlineOfficeUrl = if ($config.officeMapping -and $config.officeMapping.officeMappingUrl) { 
+        $config.officeMapping.officeMappingUrl 
+    } else { 
+        "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/office-version-mapping.json" 
+    }
+    
+    $officeMappingResult = Get-CachedOfficeMapping -OnlineOfficeUrl $onlineOfficeUrl -LocalOfficePath ".\office-version-mapping.json" -TimeoutSeconds 10 -CacheValidMinutes 30
+    
+    if ($officeMappingResult.Success) {
+        $OfficeMappingForHTML = @{
+            Success = $true
+            Method = $officeMappingResult.Source
+            Data = $officeMappingResult.Data
+            LastUpdated = if ($officeMappingResult.Data.metadata.lastUpdated) { $officeMappingResult.Data.metadata.lastUpdated } else { "Onbekend" }
+            Version = if ($officeMappingResult.Data.metadata.version) { $officeMappingResult.Data.metadata.version } else { "N/A" }
+        }
+        Write-Host "Office Mapping succesvol geladen via $($officeMappingResult.Source)" -ForegroundColor Green
+    } else {
+        $OfficeMappingForHTML = @{
+            Success = $false
+            Method = "Failed"
+            Error = $officeMappingResult.Error
+            LastUpdated = "N/A"
+            Version = "N/A"
+        }
+        Write-Host "Office Mapping kon niet worden geladen: $($officeMappingResult.Error)" -ForegroundColor Yellow
+    }
+} catch {
+    $OfficeMappingForHTML = @{
+        Success = $false
+        Method = "Exception"
+        Error = $_.Exception.Message
+        LastUpdated = "N/A"
+        Version = "N/A"
+    }
+    Write-Host "Fout bij laden Office Mapping: $($_.Exception.Message)" -ForegroundColor Red
+}
+
 # Verzamel KB Mapping informatie voor HTML rapport
 Write-Host "Ophalen KB Mapping informatie voor HTML rapport..." -ForegroundColor White
 $KBMappingForHTML = $null
@@ -995,6 +1126,7 @@ foreach ($cred in $data.LoginCredentials) {
                     LoggedOnUsers = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
                     OSPlatform = $_.OSPlatform
                     OSVersion = $_.OSVersion
+                    OfficeVersion = "Niet beschikbaar (fallback mode)"
                     UpdateStatus = "Handmatige controle vereist"
                 }
             }
@@ -1009,6 +1141,26 @@ foreach ($cred in $data.LoginCredentials) {
                     $ActualMissingUpdates = @()  # Voor echte KB nummers/update namen
                     $UpdateStatus = "Onbekend"
                     $ComplianceStatus = "Onbekend"
+                    
+                    # Haal Office versie op
+                    $OfficeVersion = "Niet gedetecteerd"
+                    try {
+                        $DetectedAppsUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/detectedApps"
+                        $DetectedApps = Invoke-MgGraphRequest -Method GET -Uri $DetectedAppsUri -ErrorAction SilentlyContinue
+                        
+                        if ($DetectedApps.value) {
+                            # Zoek naar Office apps
+                            $OfficeApp = $DetectedApps.value | Where-Object { 
+                                $_.displayName -match 'Microsoft 365|Office 365|Microsoft Office|Office Professional|Office Standard'
+                            } | Select-Object -First 1
+                            
+                            if ($OfficeApp -and $OfficeApp.version) {
+                                $OfficeVersion = $OfficeApp.version
+                            }
+                        }
+                    } catch {
+                        Write-Verbose "Kon Office versie niet ophalen voor $DeviceName`: $($_.Exception.Message)"
+                    }
                     
                     # Controleer Windows Update compliance status
                     $ComplianceUri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices('$($Device.id)')/deviceCompliancePolicyStates"
@@ -1218,6 +1370,7 @@ foreach ($cred in $data.LoginCredentials) {
                         LoggedOnUsers = if ($Device.userPrincipalName) { $Device.userPrincipalName } else { "Geen gebruiker" }
                         OSPlatform = $Device.operatingSystem
                         OSVersion = $Device.osVersion
+                        OfficeVersion = $OfficeVersion
                         UpdateStatus = $UpdateStatus
                         ComplianceStatus = $ComplianceStatus
                     }
@@ -1228,6 +1381,7 @@ foreach ($cred in $data.LoginCredentials) {
                     $ResultsArray += [PSCustomObject]@{
                         DeviceName = $Device.deviceName
                         MissingUpdates = @("Error: Kan Windows Update status niet controleren")
+                        OfficeVersion = "Onbekend"
                         ActualMissingUpdates = @()
                         Count = 1  # Error = één probleem item
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
@@ -1423,6 +1577,7 @@ foreach ($cred in $data.LoginCredentials) {
             "Compliance Status" = if ($_.ComplianceStatus) { $_.ComplianceStatus } else { "Onbekend" }
             "Missing Updates" = $MissingUpdatesDisplay
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
+            "Office Version" = if ($_.OfficeVersion) { $_.OfficeVersion } else { "Niet gedetecteerd" }
             "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
             "LastSeen" = $_.LastSeen
             "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
@@ -1652,6 +1807,8 @@ foreach ($Customer in ($CountsPerDayPerCustomer.Keys | Sort-Object)) {
 "@
 }
 
+# Verwijder trailing comma's en whitespace
+$ChartDatasets = $ChartDatasets.TrimEnd(',', ' ', "`r", "`n", "`t")
 $ChartDataJSON = $ChartDataJSON.TrimEnd(',') + "}"
 
 # Bereken globale statistieken voor alle klanten
@@ -1807,7 +1964,75 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                 default { "color: #6c757d;" }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            # Office Version kleuren bepalen op basis van mapping
+            $OfficeColor = "color: #6c757d;"  # Default grijs voor niet gedetecteerd
+            $OfficeVersionText = $row.'Office Version'
+            $OfficeChannel = "Onbekend"
+            
+            if ($OfficeMappingForHTML.Success -and $OfficeVersionText -and $OfficeVersionText -ne "Niet gedetecteerd" -and $OfficeVersionText -ne "Niet beschikbaar (fallback mode)" -and $OfficeVersionText -ne "Onbekend") {
+                try {
+                    # Haal build nummer uit versie string (bijv. "16.0.19426.20186" → "19426")
+                    if ($OfficeVersionText -match '16\.0\.(\d+)\.') {
+                        $detectedBuild = $matches[1]
+                        
+                        # Vergelijk met Current Channel (nieuwste)
+                        $currentChannelBuild = $null
+                        if ($OfficeMappingForHTML.Data.update_channels.'Current Channel'.current_build) {
+                            if ($OfficeMappingForHTML.Data.update_channels.'Current Channel'.current_build -match '^(\d+)\.') {
+                                $currentChannelBuild = [int]$matches[1]
+                            }
+                        }
+                        
+                        # Vergelijk met Monthly Enterprise Channel (recent maar stabiel)
+                        $monthlyEnterpriseBuild = $null
+                        if ($OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions -and 
+                            $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions.Count -gt 0) {
+                            $latestMonthly = $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions[0]
+                            if ($latestMonthly.build -match '^(\d+)\.') {
+                                $monthlyEnterpriseBuild = [int]$matches[1]
+                            }
+                        }
+                        
+                        # Vergelijk met Semi-Annual (oudste ondersteunde)
+                        $semiAnnualBuild = $null
+                        if ($OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions -and 
+                            $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions.Count -gt 0) {
+                            # Neem de oudste versie (laatste in de array)
+                            $oldestSemiAnnual = $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions[-1]
+                            if ($oldestSemiAnnual.build -match '^(\d+)\.') {
+                                $semiAnnualBuild = [int]$matches[1]
+                            }
+                        }
+                        
+                        $detectedBuildInt = [int]$detectedBuild
+                        
+                        # Bepaal kleur en channel op basis van build age
+                        if ($currentChannelBuild -and $detectedBuildInt -ge $currentChannelBuild) {
+                            # Nieuwste versie (Current Channel of nieuwer)
+                            $OfficeColor = "color: #28a745; font-weight: bold;"  # Groen
+                            $OfficeChannel = "Current Channel"
+                        } elseif ($monthlyEnterpriseBuild -and $detectedBuildInt -ge $monthlyEnterpriseBuild) {
+                            # Recent maar niet nieuwste (Monthly Enterprise)
+                            $OfficeColor = "color: #28a745;"  # Groen maar niet bold
+                            $OfficeChannel = "Monthly Enterprise"
+                        } elseif ($semiAnnualBuild -and $detectedBuildInt -ge $semiAnnualBuild) {
+                            # Oudere maar nog ondersteunde versie (Semi-Annual)
+                            $OfficeColor = "color: #ffc107;"  # Oranje (waarschuwing)
+                            $OfficeChannel = "Semi-Annual Enterprise"
+                        } else {
+                            # Zeer oude versie (mogelijk EOL)
+                            $OfficeColor = "color: #dc3545; font-weight: bold;"  # Rood
+                            $OfficeChannel = "Verouderd/EOL"
+                        }
+                    }
+                } catch {
+                    # Bij parse fouten, gebruik default grijs
+                    $OfficeColor = "color: #6c757d;"
+                    $OfficeChannel = "Onbekend"
+                }
+            }
+            
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td style='$OfficeColor'>$($row.'Office Version')</td><td>$OfficeChannel</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -1891,6 +2116,8 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>Compliance Status</th>
                     <th>Missing Updates</th>
                     <th>OS Version</th>
+                    <th>Office Version</th>
+                    <th>Office Channel</th>
                     <th>Count</th>
                     <th>LastSeen (UTC+$TimezoneOffsetHours)</th>
                     <th>LoggedOnUsers</th>
@@ -2389,6 +2616,7 @@ $Html = @"
         <button class="tablinks" onclick="showAllCustomers()">Alle klanten</button>
         <button class="tablinks" onclick="showAppRegistrations()">App Registrations</button>
         <button class="tablinks" onclick="showKBMapping()">KB Mapping Database</button>
+        <button class="tablinks" onclick="showOfficeVersions()">Office Versions</button>
         $CustomerTabs
     </div>
     
@@ -2593,6 +2821,104 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         })
     </div>
     
+    <!-- Office Versions Tab -->
+    <div id="OfficeVersions" class="tabcontent" style="display:none">
+        <h2>Office Version Mapping Overview</h2>
+        <div class="kb-status-box">
+            <strong>Database Status:</strong> $(if ($OfficeMappingForHTML.Success) { "<span style='color:green;'>✓ Beschikbaar</span>" } else { "<span style='color:red;'>✗ Niet beschikbaar</span>" })<br>
+            <strong>Bron Methode:</strong> $($OfficeMappingForHTML.Method)<br>
+            <strong>Laatste Update:</strong> $($OfficeMappingForHTML.LastUpdated)<br>
+            <strong>Versie:</strong> $($OfficeMappingForHTML.Version)
+            $(if (-not $OfficeMappingForHTML.Success) { "<br><strong>Fout:</strong> <span style='color:red;'>$($OfficeMappingForHTML.Error)</span>" })
+        </div>
+        
+        $(if ($OfficeMappingForHTML.Success -and $OfficeMappingForHTML.Data) {
+            $officeEntries = @()
+            
+            # Export buttons HTML
+            $officeExportButtonsHtml = "<div class='export-buttons' style='margin-bottom: 10px;'>
+                <button onclick=`"exportTableToCSV('officeVersionTable', 'Office_Versions-full.csv', false)`">Exporteren volledige tabel</button>
+                <button onclick=`"exportTableToCSV('officeVersionTable', 'Office_Versions-filtered.csv', true)`">Exporteren gefilterde rijen</button>
+            </div>"
+            
+            # Verwerk Current Channel
+            if ($OfficeMappingForHTML.Data.update_channels.'Current Channel') {
+                $channelData = $OfficeMappingForHTML.Data.update_channels.'Current Channel'
+                $officeEntries += "<tr class='build-row'><td>Current Channel</td><td>$($channelData.current_version)</td><td>$($channelData.current_build)</td><td>$($channelData.release_date)</td><td>$($channelData.update_frequency)</td><td><span class='version-badge' style='background:#28a745;color:white;'>Latest Features</span></td></tr>"
+            }
+            
+            # Verwerk Monthly Enterprise Channel
+            if ($OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel' -and $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions) {
+                foreach ($version in $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions) {
+                    $eolStatus = ""
+                    if ($version.end_of_support) {
+                        $eolDate = [DateTime]::Parse($version.end_of_support)
+                        $daysUntilEOL = ($eolDate - (Get-Date)).Days
+                        if ($daysUntilEOL -lt 0) {
+                            $eolStatus = "<span class='version-badge' style='background:#dc3545;color:white;'>EOL $($version.end_of_support)</span>"
+                        } elseif ($daysUntilEOL -lt 30) {
+                            $eolStatus = "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL Soon ($daysUntilEOL days)</span>"
+                        } else {
+                            $eolStatus = "<span class='version-badge' style='background:#17a2b8;color:white;'>Supported</span>"
+                        }
+                    }
+                    $noteText = if ($version.note) { " <em>($($version.note))</em>" } else { "" }
+                    $officeEntries += "<tr class='build-row'><td>Monthly Enterprise$noteText</td><td>$($version.version)</td><td>$($version.build)</td><td>$($version.release_date)</td><td>Maandelijks</td><td>$eolStatus</td></tr>"
+                }
+            }
+            
+            # Verwerk Semi-Annual Enterprise Channel (Preview)
+            if ($OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel (Preview)') {
+                $channelData = $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel (Preview)'
+                $eolDate = [DateTime]::Parse($channelData.end_of_support)
+                $daysUntilEOL = ($eolDate - (Get-Date)).Days
+                if ($daysUntilEOL -lt 0) {
+                    $eolStatus = "<span class='version-badge' style='background:#dc3545;color:white;'>EOL $($channelData.end_of_support)</span>"
+                } elseif ($daysUntilEOL -lt 30) {
+                    $eolStatus = "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL Soon ($daysUntilEOL days)</span>"
+                } else {
+                    $eolStatus = "<span class='version-badge' style='background:#6f42c1;color:white;'>Preview</span>"
+                }
+                $officeEntries += "<tr class='build-row'><td>Semi-Annual (Preview)</td><td>$($channelData.current_version)</td><td>$($channelData.current_build)</td><td>$($channelData.release_date)</td><td>2x per jaar</td><td>$eolStatus</td></tr>"
+            }
+            
+            # Verwerk Semi-Annual Enterprise Channel
+            if ($OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel' -and $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions) {
+                foreach ($version in $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions) {
+                    $eolDate = [DateTime]::Parse($version.end_of_support)
+                    $daysUntilEOL = ($eolDate - (Get-Date)).Days
+                    if ($daysUntilEOL -lt 0) {
+                        $eolStatus = "<span class='version-badge' style='background:#dc3545;color:white;'>EOL $($version.end_of_support)</span>"
+                    } elseif ($daysUntilEOL -lt 30) {
+                        $eolStatus = "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL Soon ($daysUntilEOL days)</span>"
+                    } else {
+                        $eolStatus = "<span class='version-badge' style='background:#28a745;color:white;'>Stable/LTS</span>"
+                    }
+                    $officeEntries += "<tr class='build-row'><td>Semi-Annual Enterprise</td><td>$($version.version)</td><td>$($version.build)</td><td>$($version.release_date)</td><td>2x per jaar</td><td>$eolStatus</td></tr>"
+                }
+            }
+            
+            "$officeExportButtonsHtml
+            <table id='officeVersionTable' class='display' style='width:100%'>
+                <thead>
+                    <tr>
+                        <th>Update Channel</th>
+                        <th>Version</th>
+                        <th>Build Number</th>
+                        <th>Release Date</th>
+                        <th>Update Frequency</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    $($officeEntries -join "`n")
+                </tbody>
+            </table>"
+        } else {
+            "<p style='color:red; font-style:italic;'>Office Version Mapping kon niet worden geladen. Controleer de configuratie.</p>"
+        })
+    </div>
+    
     $CustomerTables
     
     <div class="footer">
@@ -2630,6 +2956,14 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
             }
         }
     });
+
+    // Functie om grafiek te resetten naar alle klanten
+    function showAllCustomersChart() {
+        chart.data.labels = [$ChartLabelsString];
+        chart.data.datasets = [$ChartDatasets];
+        chart.options.plugins.title.text = 'Alle klanten';
+        chart.update();
+    }
 
     // Tabs functie - nu met grafiek filtering
     function openCustomer(evt, customerName) {
@@ -2744,13 +3078,52 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
             });
         }
         
-        // Reset grafiek naar alle klanten zonder het tab te veranderen
-        chart.data.labels = [$ChartLabelsString];
-        chart.data.datasets = [
-            $ChartDatasets
-        ];
-        chart.options.plugins.title.text = 'Alle klanten';
-        chart.update();
+        // Reset grafiek naar alle klanten bij wisselen naar KB Mapping
+        showAllCustomersChart();
+    }
+    
+    // Functie voor Office Versions tab
+    function showOfficeVersions() {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById("OfficeVersions").style.display = "block";
+        document.getElementsByClassName("tablinks")[3].className += " active";
+        
+        // Initialiseer DataTable voor Office Versions
+        if (typeof initializeDataTable === 'function') {
+            if (`$.fn.DataTable.isDataTable('#officeVersionTable')) {
+                `$('#officeVersionTable').DataTable().destroy();
+            }
+            `$('#officeVersionTable').DataTable({
+                "responsive": true,
+                "pageLength": 25,
+                "order": [[ 2, "desc" ]], // Sorteer op build number (meest recent eerst)
+                "language": {
+                    "search": "Zoeken:",
+                    "lengthMenu": "Toon _MENU_ regels",
+                    "info": "Toon _START_ tot _END_ van _TOTAL_ regels",
+                    "infoEmpty": "Geen gegevens beschikbaar",
+                    "infoFiltered": "(gefilterd uit _MAX_ totaal regels)",
+                    "paginate": {
+                        "first": "Eerste",
+                        "last": "Laatste",
+                        "next": "Volgende", 
+                        "previous": "Vorige"
+                    },
+                    "emptyTable": "Geen gegevens beschikbaar in de tabel"
+                }
+            });
+        }
+        
+        // Reset grafiek naar alle klanten bij wisselen naar Office Versions
+        showAllCustomersChart();
     }
 
     // Functie om alle klanten te tonen
@@ -2771,38 +3144,7 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
         document.getElementsByClassName("tablinks")[0].className += " active";
         
         // Reset grafiek naar alle klanten
-        chart.data.labels = [$ChartLabelsString];
-        chart.data.datasets = [
-            $ChartDatasets
-        ];
-        chart.options.plugins.title.text = 'Alle klanten';
-        chart.update();
-    }
-
-    // Functie om alle klanten te tonen
-    function showAllCustomers() {
-        // Verberg alle tabcontent
-        var tabcontent = document.getElementsByClassName("tabcontent");
-        for (var i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
-        
-        // Verwijder active class van alle tabs
-        var tablinks = document.getElementsByClassName("tablinks");
-        for (var i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-        
-        // Activeer "Alle klanten" tab
-        document.getElementsByClassName("tablinks")[0].className += " active";
-        
-        // Reset grafiek naar alle klanten
-        chart.data.labels = [$ChartLabelsString];
-        chart.data.datasets = [
-            $ChartDatasets
-        ];
-        chart.options.plugins.title.text = 'Alle klanten';
-        chart.update();
+        showAllCustomersChart();
     }
 
     // Initialiseer de pagina bij het laden

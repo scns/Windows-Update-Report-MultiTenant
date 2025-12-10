@@ -1,0 +1,181 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-12-10",
+    "description": "Microsoft 365 Apps version mapping voor verschillende update channels",
+    "source": "https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft365-apps-by-date",
+    "next_update": "2026-01-14"
+  },
+  "update_channels": {
+    "Current Channel": {
+      "description": "Meest recente features en updates, uitgebracht zodra ze klaar zijn",
+      "update_frequency": "Meerdere keren per maand",
+      "current_version": "2511",
+      "current_build": "19426.20186",
+      "release_date": "2025-12-09",
+      "release_notes": "https://learn.microsoft.com/en-us/officeupdates/current-channel#version-2511-december-09"
+    },
+    "Monthly Enterprise Channel": {
+      "description": "Nieuwe features eenmaal per maand op voorspelbare basis",
+      "update_frequency": "Maandelijks, tweede dinsdag van de maand",
+      "versions": [
+        {
+          "version": "2510",
+          "build": "19328.20266",
+          "release_date": "2025-12-09",
+          "end_of_support": "2026-03-10"
+        },
+        {
+          "version": "2509",
+          "build": "19231.20274",
+          "release_date": "2025-11-11",
+          "end_of_support": "2026-02-10"
+        },
+        {
+          "version": "2508",
+          "build": "19127.20402",
+          "release_date": "2025-10-14",
+          "end_of_support": "2026-01-13",
+          "note": "Release candidate voor Semi-Annual Enterprise Channel"
+        }
+      ]
+    },
+    "Semi-Annual Enterprise Channel (Preview)": {
+      "description": "Preview van de volgende Semi-Annual Enterprise Channel release",
+      "update_frequency": "Twee keer per jaar (maart en september)",
+      "current_version": "2408",
+      "current_build": "17928.20392",
+      "release_date": "2025-01-14",
+      "end_of_support": "2026-03-10"
+    },
+    "Semi-Annual Enterprise Channel": {
+      "description": "Stabiele versie met uitgebreide test periode, twee keer per jaar",
+      "update_frequency": "Twee keer per jaar (januari en juli)",
+      "versions": [
+        {
+          "version": "2502",
+          "build": "18526.20672",
+          "release_date": "2025-07-08",
+          "end_of_support": "2026-03-10"
+        },
+        {
+          "version": "2408",
+          "build": "17928.20742",
+          "release_date": "2025-01-14",
+          "end_of_support": "2026-03-10"
+        }
+      ]
+    }
+  },
+  "version_history": [
+    {
+      "date": "2025-12-09",
+      "version": "2511",
+      "build": "19426.20186",
+      "channel": "Current Channel",
+      "highlights": [
+        "Various fixes to functionality and performance",
+        "Security updates"
+      ]
+    },
+    {
+      "date": "2025-12-03",
+      "version": "2511",
+      "build": "19426.20170",
+      "channel": "Current Channel",
+      "highlights": [
+        "Various fixes to functionality and performance"
+      ]
+    },
+    {
+      "date": "2025-11-20",
+      "version": "2510",
+      "build": "19328.20244",
+      "channel": "Current Channel",
+      "highlights": [
+        "Outlook: Fixed issue causing repeated 'Contacting the server' messages"
+      ]
+    },
+    {
+      "date": "2025-11-18",
+      "version": "2510",
+      "build": "19328.20232",
+      "channel": "Current Channel",
+      "highlights": [
+        "Various fixes to functionality and performance"
+      ]
+    },
+    {
+      "date": "2025-11-11",
+      "version": "2510",
+      "build": "19328.20190",
+      "channel": "Current Channel",
+      "highlights": [
+        "Security updates",
+        "Outlook: Fixed @mention search issue"
+      ]
+    }
+  ],
+  "recommended_versions": {
+    "enterprise_stable": {
+      "channel": "Semi-Annual Enterprise Channel",
+      "version": "2408",
+      "build": "17928.20742",
+      "reason": "Meest stabiele versie voor enterprise omgevingen met langere test cyclus"
+    },
+    "enterprise_monthly": {
+      "channel": "Monthly Enterprise Channel",
+      "version": "2510",
+      "build": "19328.20266",
+      "reason": "Balans tussen stabiliteit en nieuwe features op voorspelbare basis"
+    },
+    "latest_features": {
+      "channel": "Current Channel",
+      "version": "2511",
+      "build": "19426.20186",
+      "reason": "Nieuwste features en fixes, geschikt voor early adopters"
+    }
+  },
+  "build_number_format": {
+    "description": "Office build nummers bestaan uit: YYMM.NNNNN",
+    "examples": {
+      "19426.20186": {
+        "year_month": "1942 (niet gebaseerd op werkelijke datum)",
+        "build_sequence": "6",
+        "revision": "20186"
+      }
+    },
+    "note": "Build nummers volgen niet altijd een directe datum correlatie"
+  },
+  "compatibility": {
+    "windows_10": {
+      "minimum_version": "1809 of hoger",
+      "recommended": "22H2 of nieuwer"
+    },
+    "windows_11": {
+      "minimum_version": "21H2 of hoger",
+      "recommended": "24H2 of nieuwer"
+    },
+    "windows_server": {
+      "supported_versions": [
+        "Windows Server 2019",
+        "Windows Server 2022"
+      ]
+    }
+  },
+  "detection_methods": {
+    "registry": {
+      "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Office\\ClickToRun\\Configuration",
+      "version_key": "VersionToReport",
+      "update_channel_key": "CDNBaseUrl"
+    },
+    "graph_api": {
+      "endpoint": "https://graph.microsoft.com/beta/deviceManagement/managedDevices('{deviceId}')/detectedApps",
+      "filter": "displayName contains 'Microsoft 365' or displayName contains 'Office'"
+    },
+    "file_version": {
+      "path": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+      "note": "Controleer FileVersion property voor build nummer"
+    }
+  }
+}
