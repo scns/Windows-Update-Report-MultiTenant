@@ -109,6 +109,21 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **Export ondersteuning**: Office versie en channel informatie opgenomen in alle CSV exports
 - **Intelligent caching**: Office mapping wordt gecached (30 minuten) met fallback naar lokale file
 
+### 🪟 **Windows Edition & Support Status Tracking**
+
+- **Windows Edition detectie**: Automatische herkenning van Windows versies op basis van build numbers
+- **Support status kleurcodering**: Visuele indicatoren voor Windows support lifecycle:
+  - **W11 25H2** (groen, bold) - Nieuwste versie, volledig ondersteund
+  - **W11 24H2** (groen, bold) - In support tot oktober 2026
+  - **W11 23H2** (groen) - In support tot november 2025
+  - **W11 22H2** (oranje) - Beperkte support, EOL oktober 2024 (Pro) / oktober 2025 (Enterprise)
+  - **W11 21H2** (rood, bold) - End of Life, EOL oktober 2023
+  - **W10 22H2** (oranje) - Eindigt oktober 2025
+  - **W10 21H2 en ouder** (rood, bold) - End of Life
+- **Windows Edition kolom**: Dedicated kolom toont duidelijke Windows versie aanduiding (bijv. "W11 24H2", "W10 22H2")
+- **Dubbele visualisatie**: Zowel OS Version (build number) als Windows Edition kolom met kleurcodering
+- **Support awareness**: Snelle identificatie van systemen die dringend een upgrade nodig hebben
+
 ### 🔍 **Geavanceerde Filtering & UI**
 
 - **Dropdown filters**: Update Status en Compliance Status kolommen hebben dropdown met alle beschikbare opties
