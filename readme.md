@@ -94,6 +94,21 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 - **Multi-platform support**: Ondersteunt Windows 10, Windows 11 en historische versies
 - **Cache methode tracking**: Toont bron van KB informatie (Online, Cache, ExpiredCache, Local, Estimated)
 
+### 📦 **Office Version Tracking & Channel Management**
+
+- **Office versie detectie**: Automatische detectie van Microsoft 365 Apps versies per device via Graph API
+- **Office Channel herkenning**: Intelligente classificatie van Office update channels op basis van build numbers:
+  - **Current Channel** - voor de nieuwste Office versies (groen, bold)
+  - **Monthly Enterprise** - voor recente maar stabiele versies (groen)
+  - **Semi-Annual Enterprise** - voor oudere maar nog ondersteunde versies (oranje)
+  - **Verouderd/EOL** - voor zeer oude versies die mogelijk end-of-life zijn (rood, bold)
+  - **Onbekend** - voor versies die niet gedetecteerd konden worden (grijs)
+- **Office Mapping Database**: Dedicated `office-version-mapping.json` met update channels, EOL datums en compatibility info
+- **Visual Indicators**: Kleurgecodeerde Office versies in PC tabellen voor snelle identificatie van verouderde installaties
+- **Office Versions Tab**: Dedicated dashboard tab met overzicht van alle Office update channels en hun status
+- **Export ondersteuning**: Office versie en channel informatie opgenomen in alle CSV exports
+- **Intelligent caching**: Office mapping wordt gecached (30 minuten) met fallback naar lokale file
+
 ### 🔍 **Geavanceerde Filtering & UI**
 
 - **Dropdown filters**: Update Status en Compliance Status kolommen hebben dropdown met alle beschikbare opties

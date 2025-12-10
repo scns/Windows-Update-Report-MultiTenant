@@ -1967,6 +1967,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             # Office Version kleuren bepalen op basis van mapping
             $OfficeColor = "color: #6c757d;"  # Default grijs voor niet gedetecteerd
             $OfficeVersionText = $row.'Office Version'
+            $OfficeChannel = "Onbekend"
             
             if ($OfficeMappingForHTML.Success -and $OfficeVersionText -and $OfficeVersionText -ne "Niet gedetecteerd" -and $OfficeVersionText -ne "Niet beschikbaar (fallback mode)" -and $OfficeVersionText -ne "Onbekend") {
                 try {
@@ -2005,28 +2006,33 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                         
                         $detectedBuildInt = [int]$detectedBuild
                         
-                        # Bepaal kleur op basis van build age
+                        # Bepaal kleur en channel op basis van build age
                         if ($currentChannelBuild -and $detectedBuildInt -ge $currentChannelBuild) {
                             # Nieuwste versie (Current Channel of nieuwer)
                             $OfficeColor = "color: #28a745; font-weight: bold;"  # Groen
+                            $OfficeChannel = "Current Channel"
                         } elseif ($monthlyEnterpriseBuild -and $detectedBuildInt -ge $monthlyEnterpriseBuild) {
                             # Recent maar niet nieuwste (Monthly Enterprise)
                             $OfficeColor = "color: #28a745;"  # Groen maar niet bold
+                            $OfficeChannel = "Monthly Enterprise"
                         } elseif ($semiAnnualBuild -and $detectedBuildInt -ge $semiAnnualBuild) {
                             # Oudere maar nog ondersteunde versie (Semi-Annual)
                             $OfficeColor = "color: #ffc107;"  # Oranje (waarschuwing)
+                            $OfficeChannel = "Semi-Annual Enterprise"
                         } else {
                             # Zeer oude versie (mogelijk EOL)
                             $OfficeColor = "color: #dc3545; font-weight: bold;"  # Rood
+                            $OfficeChannel = "Verouderd/EOL"
                         }
                     }
                 } catch {
                     # Bij parse fouten, gebruik default grijs
                     $OfficeColor = "color: #6c757d;"
+                    $OfficeChannel = "Onbekend"
                 }
             }
             
-            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td style='$OfficeColor'>$($row.'Office Version')</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
+            $TableRows += "<tr><td>$($row.Device)</td><td style='$StatusColor'>$($row.'Update Status')</td><td style='$ComplianceColor'>$($row.'Compliance Status')</td><td>$($row.'Missing Updates')</td><td>$($row.'OS Version')</td><td style='$OfficeColor'>$($row.'Office Version')</td><td>$OfficeChannel</td><td>$($row.Count)</td><td>$($row.LastSeen)</td><td>$($row.LoggedOnUsers)</td></tr>`n"
             $RowCount++
         }
     }
@@ -2111,6 +2117,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                     <th>Missing Updates</th>
                     <th>OS Version</th>
                     <th>Office Version</th>
+                    <th>Office Channel</th>
                     <th>Count</th>
                     <th>LastSeen (UTC+$TimezoneOffsetHours)</th>
                     <th>LoggedOnUsers</th>
