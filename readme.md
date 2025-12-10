@@ -148,11 +148,13 @@ Dit PowerShell-project genereert een uitgebreid overzichtsrapport van Windows Up
 
 Voor volledige functionaliteit zijn de volgende **Application Permissions** vereist:
 
-### 🔒 Device Management & Compliance
+> **⚠️ Belangrijk**: Configureer deze permissions als **Application permissions** (niet Delegated permissions) in je Azure App Registration.
+
+### 🔒 Device Management & Configuration
 
 ```text
-DeviceManagementManagedDevices.Read.All
-DeviceManagementConfiguration.Read.All
+DeviceManagementManagedDevices.Read.All (Application)
+DeviceManagementConfiguration.Read.All (Application)
 ```
 
 **Voor**: Device management API, compliance policy states, en device configuration informatie
@@ -160,24 +162,25 @@ DeviceManagementConfiguration.Read.All
 ### 🛡️ Security & Threat Hunting
 
 ```text
-ThreatHunting.Read.All
+ThreatHunting.Read.All (Application)
+SecurityEvents.Read.All (Application)
 ```
 
-**Voor**: Fallback device informatie via Advanced Hunting KQL queries
+**Voor**: Advanced Hunting KQL queries en security event informatie
 
-### 📊 Directory Information
+### 📊 Directory & Device Information
 
 ```text
-Device.Read.All
-Directory.Read.All
+Device.Read.All (Application)
 ```
 
 **Voor**: Device directory informatie en organizational context
 
-### ⚙️ Application Monitoring
+### ⚙️ Application & Windows Updates Management
 
 ```text
-Application.Read.All
+Application.Read.All (Application)
+WindowsUpdates.ReadWrite.All (Application)
 ```
 
 **Voor**: App Registration expiry monitoring en certificate status
