@@ -193,28 +193,7 @@ function Get-CachedOfficeMapping {
         }
     }
     
-    # Probeer eerst lokaal bestand te laden
-    if (Test-Path $LocalOfficePath) {
-        try {
-            Write-Verbose "Loading Office mapping from local file: $LocalOfficePath"
-            $localMapping = Get-Content -Path $LocalOfficePath -Raw | ConvertFrom-Json
-            
-            # Update cache
-            $Global:CachedOfficeMapping = $localMapping
-            $Global:OfficeMappingCacheTime = $now
-            
-            Write-Verbose "Office mapping successfully cached from local file (valid for $CacheValidMinutes minutes)"
-            return @{
-                Success = $true
-                Data = $localMapping
-                Source = "LocalFile"
-            }
-        } catch {
-            Write-Verbose "Failed to load local Office mapping: $($_.Exception.Message)"
-        }
-    }
-    
-    # Probeer online op te halen als fallback
+    # Probeer eerst online op te halen
     if ($OnlineOfficeUrl) {
         try {
             Write-Verbose "Fetching fresh Office mapping from: $OnlineOfficeUrl (timeout: $TimeoutSeconds seconds)"
@@ -232,6 +211,27 @@ function Get-CachedOfficeMapping {
             }
         } catch {
             Write-Verbose "Failed to fetch online Office mapping: $($_.Exception.Message)"
+        }
+    }
+    
+    # Probeer lokaal bestand te laden als fallback
+    if (Test-Path $LocalOfficePath) {
+        try {
+            Write-Verbose "Loading Office mapping from local file: $LocalOfficePath"
+            $localMapping = Get-Content -Path $LocalOfficePath -Raw | ConvertFrom-Json
+            
+            # Update cache
+            $Global:CachedOfficeMapping = $localMapping
+            $Global:OfficeMappingCacheTime = $now
+            
+            Write-Verbose "Office mapping successfully cached from local file (valid for $CacheValidMinutes minutes)"
+            return @{
+                Success = $true
+                Data = $localMapping
+                Source = "LocalFile"
+            }
+        } catch {
+            Write-Verbose "Failed to load local Office mapping: $($_.Exception.Message)"
         }
     }
     

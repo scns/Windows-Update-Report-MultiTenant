@@ -330,6 +330,19 @@ Het script installeert automatisch benodigde PowerShell modules en genereert het
 }
 ```
 
+### Office Version Mapping
+
+```json
+{
+    "officeMapping": {
+        "officeMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/office-version-mapping.json",
+        "timeoutSeconds": 10,
+        "cacheValidMinutes": 30,
+        "fallbackToLocalMapping": true
+    }
+}
+```
+
 ### Backup System
 
 ```json
@@ -566,6 +579,10 @@ Het `config.json` bestand bevat alle instellingen:
 - `kbMapping.estimationThreshold`: Build verschil drempel voor KB estimaties
 - `kbMapping.showEstimationLabels`: Toon labels voor geschatte KB nummers
 - `kbMapping.fallbackToLocalMapping`: Gebruik lokale mapping als fallback
+- `officeMapping.officeMappingUrl`: URL naar online Office version mapping database
+- `officeMapping.timeoutSeconds`: Timeout voor online Office mapping requests (standaard: 10)
+- `officeMapping.cacheValidMinutes`: Cache geldigheid in minuten (standaard: 30)
+- `officeMapping.fallbackToLocalMapping`: Gebruik lokale Office mapping als fallback
 - `theme.default`: Standaard thema voor het dashboard ("dark" of "light")
 
 > 📖 **Gedetailleerde configuratie uitleg**: Voor uitgebreide informatie over elke configuratie optie, zie [CONFIG-UITLEG.md](CONFIG-UITLEG.md)
