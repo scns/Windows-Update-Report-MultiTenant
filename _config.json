@@ -19,6 +19,12 @@
             "oldMapping": "(verouderd)"
         }
     },
+    "officeMapping": {
+        "officeMappingUrl": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/office-version-mapping.json",
+        "timeoutSeconds": 10,
+        "cacheValidMinutes": 30,
+        "fallbackToLocalMapping": true
+    },
     "backup": {
         "enableExportBackup": true,
         "enableArchiveBackup": true,
