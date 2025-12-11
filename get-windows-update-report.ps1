@@ -3104,9 +3104,6 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                         $historyCount++
                     }
                 }
-                if ($OfficeMappingForHTML.Data.version_history.'Current Channel'.Count -gt 20) {
-                    $officeEntries += "<tr style='font-style:italic;color:#6c757d;'><td>...</td><td colspan='5'>en $(($OfficeMappingForHTML.Data.version_history.'Current Channel'.Count - 20)) oudere versies</td></tr>"
-                }
             }
             
             # Verwerk Monthly Enterprise Channel Version History
@@ -3131,9 +3128,6 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                         $officeEntries += "<tr class='build-row'><td>Monthly Enterprise History</td><td>$($historyEntry.version)</td><td>$($historyEntry.full_build)</td><td>$($historyEntry.release_date)</td><td>1x per maand</td><td>$supportStatus</td></tr>"
                         $historyCount++
                     }
-                }
-                if ($OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel'.Count -gt 15) {
-                    $officeEntries += "<tr style='font-style:italic;color:#6c757d;'><td>...</td><td colspan='5'>en $(($OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel'.Count - 15)) oudere versies</td></tr>"
                 }
             }
 
