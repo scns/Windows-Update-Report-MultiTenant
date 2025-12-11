@@ -189,13 +189,22 @@
         "priority": 6
       },
       {
+        "name": "Oude Current Channel versies",
+        "condition": "build >= 18324 AND build < 19127",
+        "channel": "Current Channel (zeer verouderd)",
+        "status": "Zeer verouderd - direct updaten!",
+        "color": "#dc3545",
+        "bold": true,
+        "priority": 7
+      },
+      {
         "name": "Semi-Annual Enterprise",
-        "condition": "build >= 17928 AND build < 19127",
+        "condition": "build >= 17928 AND build < 18324",
         "channel": "Semi-Annual Enterprise",
         "status": "Ondersteund",
         "color": "#ffc107",
         "bold": false,
-        "priority": 7
+        "priority": 8
       },
       {
         "name": "Zeer verouderd / EOL",
@@ -204,7 +213,7 @@
         "status": "End of Life - direct updaten!",
         "color": "#dc3545",
         "bold": true,
-        "priority": 8
+        "priority": 9
       }
     ]
   }
