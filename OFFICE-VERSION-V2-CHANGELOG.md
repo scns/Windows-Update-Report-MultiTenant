@@ -6,13 +6,15 @@
 ## 🎯 Probleem
 
 Het originele systeem gebruikte simpele >= vergelijkingen voor build nummers, waardoor:
+
 - Alle builds >= 19328 als groen "Monthly Enterprise" werden geclassificeerd
 - Oude Current Channel builds (bijv. 19350) ten onrechte groen werden
 - Geen onderscheid tussen recente en verouderde versies binnen hetzelfde kanaal
 - Te veel false positives voor "up-to-date" status
 
 **Voorbeeld probleem**:
-```
+
+```text
 Versie: 16.0.19350.20000 (40 dagen oud)
 Oud gedrag: ✓ Groen "Monthly Enterprise" 
 Werkelijkheid: ⚠️ Verouderde Current Channel - moet oranje zijn
@@ -23,6 +25,7 @@ Werkelijkheid: ⚠️ Verouderde Current Channel - moet oranje zijn
 ### 1. Uitgebreide Version History Database
 
 **office-version-mapping.json v2.0** bevat nu:
+
 - **43 Current Channel releases** van de laatste 12 maanden
 - **11 Monthly Enterprise releases** met end-of-support datums
 - **age_days** metadata per versie (0-336 dagen)
@@ -104,6 +107,7 @@ foreach ($rule in $OfficeMappingForHTML.Data.classification_rules.rules | Sort-O
 ## 🔧 Technische Details
 
 ### Metadata Tracking
+
 - **version**: Office versie nummer (2511, 2510, etc.)
 - **build**: Major build number (19426, 19328, etc.)
 - **full_build**: Complete build (19426.20186)
@@ -112,7 +116,9 @@ foreach ($rule in $OfficeMappingForHTML.Data.classification_rules.rules | Sort-O
 - **end_of_support**: EOL datum voor Monthly Enterprise
 
 ### Conditie Parsing
+
 De PowerShell code ondersteunt:
+
 - `build >= 19426` - Minimale build
 - `build < 19426` - Maximale build (exclusief)
 - `build == 19328` - Exacte build match
@@ -120,7 +126,9 @@ De PowerShell code ondersteunt:
 - `AND` - Combinaties van condities
 
 ### Fallback Mechanisme
+
 Als classification rules falen:
+
 1. Gebruik oude >= vergelijkingen als backup
 2. Log waarschuwing in console
 3. Gebruik versie age voor meer nauwkeurigheid
@@ -128,30 +136,34 @@ Als classification rules falen:
 ## 📈 Impact
 
 ### Verbeteringen
+
 - ✅ **Nauwkeurigheid**: 95%+ correcte classificaties (was ~70%)
 - ✅ **False Positives**: 90% reductie in groene verouderde versies
 - ✅ **Onderhoud**: Eenvoudig uitbreiden met nieuwe versies
 - ✅ **Flexibiliteit**: Classification rules aanpasbaar zonder code wijzigingen
 
 ### Performance
+
 - ⚡ **Cache**: 30 minuten voor online mapping
 - ⚡ **Fallback**: Lokale file bij netwerk problemen
 - ⚡ **Parse**: Minimale overhead door efficiënte regex
 
 ### Onderhoud
+
 **Maandelijks**: Update version_history met nieuwe releases
 **Jaarlijks**: Verwijder versies ouder dan 12 maanden
 **Ad-hoc**: Pas classification_rules aan bij policy wijzigingen
 
 ## 🎓 Bronnen
 
-- **Microsoft Learn**: https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft365-apps-by-date
-- **Update Channels**: https://learn.microsoft.com/en-us/DeployOffice/overview-of-update-channels-for-office-365-proplus
-- **Release Notes**: https://learn.microsoft.com/en-us/officeupdates/release-notes-microsoft365-apps
+- **Microsoft Learn**: <https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft365-apps-by-date>
+- **Update Channels**: <https://learn.microsoft.com/en-us/DeployOffice/overview-of-update-channels-for-office-365-proplus>
+- **Release Notes**: <https://learn.microsoft.com/en-us/officeupdates/release-notes-microsoft365-apps>
 
 ## 📝 Changelog
 
 ### v2.0.0 (2025-12-15)
+
 - ✨ Added 43 Current Channel versions in version_history
 - ✨ Added 11 Monthly Enterprise versions with EOL dates
 - ✨ Implemented classification_rules system with 7 priority rules
@@ -164,6 +176,7 @@ Als classification rules falen:
 - 📚 Updated README.md with v2.0 features
 
 ### v1.0.0 (2025-12-10)
+
 - 🎉 Initial release met basis Office channel detection
 - ✅ Current, Monthly Enterprise, Semi-Annual support
 - ✅ Online-first mapping met 30 min cache
