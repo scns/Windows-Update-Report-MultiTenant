@@ -1361,6 +1361,31 @@ foreach ($cred in $data.LoginCredentials) {
                         1  # Fallback voor onbekende status
                     }
                     
+                    # Bepaal Office Channel op basis van versie
+                    $OfficeChannel = "Onbekend"
+                    if ($OfficeVersion -and $OfficeVersion -ne "Niet gedetecteerd" -and $OfficeVersion -ne "Niet beschikbaar (fallback mode)" -and $OfficeVersion -ne "Onbekend") {
+                        if ($OfficeVersion -match '16\.0\.(\d+)\.(\d+)') {
+                            $detectedBuildMajor = [int]$matches[1]
+                            
+                            # Verfijnde classificatie met meer nuance
+                            if ($detectedBuildMajor -ge 19426) {
+                                $OfficeChannel = "Current Channel"
+                            } elseif ($detectedBuildMajor -ge 19328) {
+                                $OfficeChannel = "Current Channel (mogelijk verouderd)"
+                            } elseif ($detectedBuildMajor -eq 19328) {
+                                $OfficeChannel = "Monthly Enterprise"
+                            } elseif ($detectedBuildMajor -ge 19231 -and $detectedBuildMajor -lt 19328) {
+                                $OfficeChannel = "Monthly Enterprise (recent)"
+                            } elseif ($detectedBuildMajor -ge 19127 -and $detectedBuildMajor -lt 19231) {
+                                $OfficeChannel = "Monthly Enterprise (verouderd)"
+                            } elseif ($detectedBuildMajor -ge 17928) {
+                                $OfficeChannel = "Semi-Annual Enterprise"
+                            } else {
+                                $OfficeChannel = "Verouderd/EOL"
+                            }
+                        }
+                    }
+                    
                     $ResultsArray += [PSCustomObject]@{
                         DeviceName = $DeviceName
                         MissingUpdates = $MissingUpdates
@@ -1371,6 +1396,7 @@ foreach ($cred in $data.LoginCredentials) {
                         OSPlatform = $Device.operatingSystem
                         OSVersion = $Device.osVersion
                         OfficeVersion = $OfficeVersion
+                        OfficeChannel = $OfficeChannel
                         UpdateStatus = $UpdateStatus
                         ComplianceStatus = $ComplianceStatus
                     }
@@ -1382,6 +1408,7 @@ foreach ($cred in $data.LoginCredentials) {
                         DeviceName = $Device.deviceName
                         MissingUpdates = @("Error: Kan Windows Update status niet controleren")
                         OfficeVersion = "Onbekend"
+                        OfficeChannel = "Onbekend"
                         ActualMissingUpdates = @()
                         Count = 1  # Error = één probleem item
                         LastSeen = Convert-UTCToLocalTime -UTCTimeString $Device.lastSyncDateTime -OffsetHours $TimezoneOffsetHours
@@ -1542,7 +1569,9 @@ foreach ($cred in $data.LoginCredentials) {
                 LastSeen = (Get-Date).ToString()
                 LoggedOnUsers = "N/A"
                 OSPlatform = "Windows"
-                OSVersion = "Onbekend" 
+                OSVersion = "Onbekend"
+                OfficeVersion = "Onbekend"
+                OfficeChannel = "Onbekend"
                 UpdateStatus = "Permission Error"
                 ComplianceStatus = "Error"
             })
@@ -1578,6 +1607,7 @@ foreach ($cred in $data.LoginCredentials) {
             "Missing Updates" = $MissingUpdatesDisplay
             "OS Version" = if ($_.OSVersion) { $_.OSVersion } else { "Onbekend" }
             "Office Version" = if ($_.OfficeVersion) { $_.OfficeVersion } else { "Niet gedetecteerd" }
+            "Office Channel" = if ($_.OfficeChannel) { $_.OfficeChannel } else { "Onbekend" }
             "Count" = if ($_.Count -gt 0) { $_.Count } else { 0 }
             "LastSeen" = $_.LastSeen
             "LoggedOnUsers" = if ($_.LoggedOnUsers -is [System.Array]) { $_.LoggedOnUsers -join ', ' } else { $_.LoggedOnUsers }
@@ -1969,6 +1999,8 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             $OfficeVersionText = $row.'Office Version'
             $OfficeChannel = "Onbekend"
             
+            Write-Verbose "Processing device: $($row.Device), Office Version: $OfficeVersionText, Mapping Success: $($OfficeMappingForHTML.Success)"
+            
             if ($OfficeMappingForHTML.Success -and $OfficeVersionText -and $OfficeVersionText -ne "Niet gedetecteerd" -and $OfficeVersionText -ne "Niet beschikbaar (fallback mode)" -and $OfficeVersionText -ne "Onbekend") {
                 try {
                     # Haal build nummer uit versie string (bijv. "16.0.19426.20186" → build: 19426, full: 19426.20186)
@@ -2011,6 +2043,9 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                                 $versionAge = 0
                             }
                         }
+                        
+                        # Debug info
+                        Write-Verbose "Office Version Debug: Build=$detectedBuildMajor.$detectedBuildMinor, Age=$versionAge days"
                         
                         # Gebruik classificatieregels uit mapping bestand
                         $classificationApplied = $false
@@ -2066,6 +2101,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                                         $OfficeColor += " font-weight: bold;"
                                     }
                                     $classificationApplied = $true
+                                    Write-Verbose "  → Matched rule: $($rule.name) → Channel: $OfficeChannel, Color: $($rule.color)"
                                     break  # Stop bij de eerste match (regels zijn gesorteerd op prioriteit)
                                 }
                             }
@@ -2073,6 +2109,7 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
                         
                         # Fallback naar oude logica als classificatie regels niet werken
                         if (-not $classificationApplied) {
+                            Write-Verbose "  → No classification rule matched, using fallback logic"
                             if ($detectedBuildMajor -ge 19426) {
                                 $OfficeColor = "color: #28a745; font-weight: bold;"  # Groen bold
                                 $OfficeChannel = "Current Channel"
@@ -2984,7 +3021,7 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
             # Verwerk Current Channel
             if ($OfficeMappingForHTML.Data.update_channels.'Current Channel') {
                 $channelData = $OfficeMappingForHTML.Data.update_channels.'Current Channel'
-                $officeEntries += "<tr class='build-row'><td>Current Channel</td><td>$($channelData.current_version)</td><td>$($channelData.current_build)</td><td>$($channelData.release_date)</td><td>$($channelData.update_frequency)</td><td><span class='version-badge' style='background:#28a745;color:white;'>Latest Features</span></td></tr>"
+                $officeEntries += "<tr class='build-row'><td>Current Channel</td><td>$($channelData.current_version)</td><td>$($channelData.current_build)</td><td>$($channelData.release_date)</td><td>Meerdere per maand</td><td><span class='version-badge' style='background:#28a745;color:white;'>Latest Features</span></td></tr>"
             }
             
             # Verwerk Monthly Enterprise Channel
@@ -3003,21 +3040,32 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                         }
                     }
                     $noteText = if ($version.note) { " <em>($($version.note))</em>" } else { "" }
-                    $officeEntries += "<tr class='build-row'><td>Monthly Enterprise$noteText</td><td>$($version.version)</td><td>$($version.build)</td><td>$($version.release_date)</td><td>Maandelijks</td><td>$eolStatus</td></tr>"
+                    $officeEntries += "<tr class='build-row'><td>Monthly Enterprise$noteText</td><td>$($version.version)</td><td>$($version.full_build)</td><td>$($version.release_date)</td><td>Maandelijks</td><td>$eolStatus</td></tr>"
                 }
             }
             
             # Verwerk Semi-Annual Enterprise Channel (Preview)
             if ($OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel (Preview)') {
                 $channelData = $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel (Preview)'
-                $eolDate = [DateTime]::Parse($channelData.end_of_support)
-                $daysUntilEOL = ($eolDate - (Get-Date)).Days
-                if ($daysUntilEOL -lt 0) {
-                    $eolStatus = "<span class='version-badge' style='background:#dc3545;color:white;'>EOL $($channelData.end_of_support)</span>"
-                } elseif ($daysUntilEOL -lt 30) {
-                    $eolStatus = "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL Soon ($daysUntilEOL days)</span>"
+                
+                # Check of end_of_support bestaat en niet leeg is
+                if ($channelData.end_of_support -and $channelData.end_of_support -ne "") {
+                    try {
+                        $eolDate = [DateTime]::Parse($channelData.end_of_support)
+                        $daysUntilEOL = ($eolDate - (Get-Date)).Days
+                        if ($daysUntilEOL -lt 0) {
+                            $eolStatus = "<span class='version-badge' style='background:#dc3545;color:white;'>EOL $($channelData.end_of_support)</span>"
+                        } elseif ($daysUntilEOL -lt 30) {
+                            $eolStatus = "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL Soon ($daysUntilEOL days)</span>"
+                        } else {
+                            $eolStatus = "<span class='version-badge' style='background:#6f42c1;color:white;'>Preview</span>"
+                        }
+                    } catch {
+                        $eolStatus = "<span class='version-badge' style='background:#6f42c1;color:white;'>Preview</span>"
+                    }
                 } else {
-                    $eolStatus = "<span class='version-badge' style='background:#6f42c1;color:white;'>Preview</span>"
+                    # Gebruik support_end als fallback
+                    $eolStatus = "<span class='version-badge' style='background:#6f42c1;color:white;'>Preview - $($channelData.support_end)</span>"
                 }
                 $officeEntries += "<tr class='build-row'><td>Semi-Annual (Preview)</td><td>$($channelData.current_version)</td><td>$($channelData.current_build)</td><td>$($channelData.release_date)</td><td>2x per jaar</td><td>$eolStatus</td></tr>"
             }
@@ -3034,9 +3082,61 @@ $(foreach ($customer in $AppRegistrationData.Keys | Sort-Object) {
                     } else {
                         $eolStatus = "<span class='version-badge' style='background:#28a745;color:white;'>Stable/LTS</span>"
                     }
-                    $officeEntries += "<tr class='build-row'><td>Semi-Annual Enterprise</td><td>$($version.version)</td><td>$($version.build)</td><td>$($version.release_date)</td><td>2x per jaar</td><td>$eolStatus</td></tr>"
+                    $officeEntries += "<tr class='build-row'><td>Semi-Annual Enterprise</td><td>$($version.version)</td><td>$($version.full_build)</td><td>$($version.release_date)</td><td>2x per jaar</td><td>$eolStatus</td></tr>"
                 }
             }
+            
+            # Verwerk Current Channel Version History (zonder separator header in de tabel)
+            if ($OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                $historyCount = 0
+                foreach ($historyEntry in $OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                    if ($historyCount -lt 20) {  # Toon eerste 20 versies
+                        $ageBadge = if ($historyEntry.age_days -eq 0) {
+                            "<span class='version-badge' style='background:#28a745;color:white;'>Nieuwste</span>"
+                        } elseif ($historyEntry.age_days -le 30) {
+                            "<span class='version-badge' style='background:#28a745;color:white;'>$($historyEntry.age_days) dagen oud</span>"
+                        } elseif ($historyEntry.age_days -le 60) {
+                            "<span class='version-badge' style='background:#ffc107;color:#212529;'>$($historyEntry.age_days) dagen oud</span>"
+                        } else {
+                            "<span class='version-badge' style='background:#dc3545;color:white;'>$($historyEntry.age_days) dagen oud</span>"
+                        }
+                        $officeEntries += "<tr class='build-row'><td>Current Channel History</td><td>$($historyEntry.version)</td><td>$($historyEntry.full_build)</td><td>$($historyEntry.release_date)</td><td>Meerdere per maand</td><td>$ageBadge</td></tr>"
+                        $historyCount++
+                    }
+                }
+                if ($OfficeMappingForHTML.Data.version_history.'Current Channel'.Count -gt 20) {
+                    $officeEntries += "<tr style='font-style:italic;color:#6c757d;'><td>...</td><td colspan='5'>en $(($OfficeMappingForHTML.Data.version_history.'Current Channel'.Count - 20)) oudere versies</td></tr>"
+                }
+            }
+            
+            # Verwerk Monthly Enterprise Channel Version History
+            if ($OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel') {
+                $historyCount = 0
+                foreach ($historyEntry in $OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel') {
+                    if ($historyCount -lt 15) {  # Toon eerste 15 versies
+                        # Bereken dagen tot EOL
+                        $supportStatus = if ($historyEntry.end_of_support) {
+                            $eolDate = [DateTime]::Parse($historyEntry.end_of_support)
+                            $daysUntilEOL = ($eolDate - (Get-Date)).Days
+                            if ($daysUntilEOL -lt 0) {
+                                "<span class='version-badge' style='background:#dc3545;color:white;'>EOL</span>"
+                            } elseif ($daysUntilEOL -le 30) {
+                                "<span class='version-badge' style='background:#ffc107;color:#212529;'>EOL over $daysUntilEOL dagen</span>"
+                            } else {
+                                "<span class='version-badge' style='background:#28a745;color:white;'>Ondersteund</span>"
+                            }
+                        } else {
+                            "<span class='version-badge' style='background:#6c757d;color:white;'>Onbekend</span>"
+                        }
+                        $officeEntries += "<tr class='build-row'><td>Monthly Enterprise History</td><td>$($historyEntry.version)</td><td>$($historyEntry.full_build)</td><td>$($historyEntry.release_date)</td><td>1x per maand</td><td>$supportStatus</td></tr>"
+                        $historyCount++
+                    }
+                }
+                if ($OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel'.Count -gt 15) {
+                    $officeEntries += "<tr style='font-style:italic;color:#6c757d;'><td>...</td><td colspan='5'>en $(($OfficeMappingForHTML.Data.version_history.'Monthly Enterprise Channel'.Count - 15)) oudere versies</td></tr>"
+                }
+            }
+
             
             "$officeExportButtonsHtml
             <table id='officeVersionTable' class='display' style='width:100%'>
