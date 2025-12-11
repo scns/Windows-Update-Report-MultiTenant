@@ -198,22 +198,40 @@
         "priority": 7
       },
       {
-        "name": "Semi-Annual Enterprise",
-        "condition": "build >= 17928 AND build < 18324",
+        "name": "Semi-Annual Enterprise - Nieuwste",
+        "condition": "build >= 18526",
         "channel": "Semi-Annual Enterprise",
-        "status": "Ondersteund",
-        "color": "#ffc107",
+        "status": "Actueel",
+        "color": "#28a745",
         "bold": false,
         "priority": 8
       },
       {
+        "name": "Semi-Annual Enterprise - Vorige versie",
+        "condition": "build >= 17928 AND build < 18526",
+        "channel": "Semi-Annual Enterprise (vorige)",
+        "status": "Ondersteund maar niet nieuwste",
+        "color": "#ffc107",
+        "bold": false,
+        "priority": 9
+      },
+      {
+        "name": "Semi-Annual Enterprise - Verouderd",
+        "condition": "build >= 17328 AND build < 17928",
+        "channel": "Semi-Annual Enterprise (verouderd)",
+        "status": "Verouderd - update aanbevolen",
+        "color": "#dc3545",
+        "bold": true,
+        "priority": 10
+      },
+      {
         "name": "Zeer verouderd / EOL",
-        "condition": "build < 17928",
+        "condition": "build < 17328",
         "channel": "Onbekend/Verouderd",
         "status": "End of Life - direct updaten!",
         "color": "#dc3545",
         "bold": true,
-        "priority": 9
+        "priority": 11
       }
     ]
   }
