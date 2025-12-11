@@ -199,7 +199,7 @@
       },
       {
         "name": "Semi-Annual Enterprise - Nieuwste",
-        "condition": "build >= 18526",
+        "condition": "build >= 18526 AND build < 18600",
         "channel": "Semi-Annual Enterprise",
         "status": "Actueel",
         "color": "#28a745",
@@ -208,7 +208,7 @@
       },
       {
         "name": "Semi-Annual Enterprise - Vorige versie",
-        "condition": "build >= 17928 AND build < 18526",
+        "condition": "build >= 17928 AND build < 18324",
         "channel": "Semi-Annual Enterprise (vorige)",
         "status": "Ondersteund maar niet nieuwste",
         "color": "#ffc107",
