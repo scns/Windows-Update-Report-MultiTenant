@@ -112,6 +112,7 @@
       { "version": "2502", "build": 18526, "full_build": "18526.20144", "release_date": "2025-03-05", "age_days": 279 },
       { "version": "2501", "build": 18429, "full_build": "18429.20158", "release_date": "2025-02-11", "age_days": 301 },
       { "version": "2501", "build": 18429, "full_build": "18429.20132", "release_date": "2025-01-30", "age_days": 313 },
+      { "version": "2412", "build": 18324, "full_build": "18324.20240", "release_date": "2025-01-21", "age_days": 322 },
       { "version": "2412", "build": 18324, "full_build": "18324.20194", "release_date": "2025-01-16", "age_days": 327 },
       { "version": "2412", "build": 18324, "full_build": "18324.20190", "release_date": "2025-01-14", "age_days": 329 },
       { "version": "2412", "build": 18324, "full_build": "18324.20168", "release_date": "2025-01-07", "age_days": 336 }
@@ -170,13 +171,22 @@
         "priority": 4
       },
       {
-        "name": "Monthly Enterprise - Ondersteund",
-        "condition": "build >= 19127 AND build < 19328",
-        "channel": "Monthly Enterprise",
-        "status": "Ondersteund",
+        "name": "Monthly Enterprise - Recent",
+        "condition": "build >= 19231 AND build < 19328",
+        "channel": "Monthly Enterprise (recent)",
+        "status": "Recent maar niet nieuwste",
         "color": "#28a745",
         "bold": false,
         "priority": 5
+      },
+      {
+        "name": "Monthly Enterprise - Verouderd",
+        "condition": "build >= 19127 AND build < 19231",
+        "channel": "Monthly Enterprise (verouderd)",
+        "status": "Verouderd - update aanbevolen",
+        "color": "#ffc107",
+        "bold": false,
+        "priority": 6
       },
       {
         "name": "Semi-Annual Enterprise",
@@ -185,7 +195,7 @@
         "status": "Ondersteund",
         "color": "#ffc107",
         "bold": false,
-        "priority": 6
+        "priority": 7
       },
       {
         "name": "Zeer verouderd / EOL",
@@ -194,7 +204,7 @@
         "status": "End of Life - direct updaten!",
         "color": "#dc3545",
         "bold": true,
-        "priority": 7
+        "priority": 8
       }
     ]
   }
