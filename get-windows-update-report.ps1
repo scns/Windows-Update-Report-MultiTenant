@@ -1971,62 +1971,134 @@ foreach ($Customer in ($LatestCsvPerCustomer.Keys | Sort-Object)) {
             
             if ($OfficeMappingForHTML.Success -and $OfficeVersionText -and $OfficeVersionText -ne "Niet gedetecteerd" -and $OfficeVersionText -ne "Niet beschikbaar (fallback mode)" -and $OfficeVersionText -ne "Onbekend") {
                 try {
-                    # Haal build nummer uit versie string (bijv. "16.0.19426.20186" → "19426")
-                    if ($OfficeVersionText -match '16\.0\.(\d+)\.') {
-                        $detectedBuild = $matches[1]
+                    # Haal build nummer uit versie string (bijv. "16.0.19426.20186" → build: 19426, full: 19426.20186)
+                    if ($OfficeVersionText -match '16\.0\.(\d+)\.(\d+)') {
+                        $detectedBuildMajor = [int]$matches[1]  # Bijvoorbeeld: 19426
+                        $detectedBuildMinor = [int]$matches[2]  # Bijvoorbeeld: 20186
+                        $detectedFullBuild = "$($matches[1]).$($matches[2])"  # Bijvoorbeeld: "19426.20186"
                         
-                        # Vergelijk met Current Channel (nieuwste)
-                        $currentChannelBuild = $null
-                        if ($OfficeMappingForHTML.Data.update_channels.'Current Channel'.current_build) {
-                            if ($OfficeMappingForHTML.Data.update_channels.'Current Channel'.current_build -match '^(\d+)\.') {
-                                $currentChannelBuild = [int]$matches[1]
+                        # Bereken de leeftijd van de versie door te vergelijken met version_history
+                        $versionAge = $null
+                        $exactMatch = $false
+                        
+                        if ($OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                            foreach ($historyEntry in $OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                                if ($historyEntry.full_build -eq $detectedFullBuild) {
+                                    $versionAge = $historyEntry.age_days
+                                    $exactMatch = $true
+                                    break
+                                }
                             }
                         }
                         
-                        # Vergelijk met Monthly Enterprise Channel (recent maar stabiel)
-                        $monthlyEnterpriseBuild = $null
-                        if ($OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions -and 
-                            $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions.Count -gt 0) {
-                            $latestMonthly = $OfficeMappingForHTML.Data.update_channels.'Monthly Enterprise Channel'.versions[0]
-                            if ($latestMonthly.build -match '^(\d+)\.') {
-                                $monthlyEnterpriseBuild = [int]$matches[1]
+                        # Als geen exacte match, schat de leeftijd op basis van build nummer
+                        if (-not $exactMatch -and $OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                            foreach ($historyEntry in $OfficeMappingForHTML.Data.version_history.'Current Channel') {
+                                if ($historyEntry.build -eq $detectedBuildMajor) {
+                                    $versionAge = $historyEntry.age_days
+                                    break
+                                }
                             }
                         }
                         
-                        # Vergelijk met Semi-Annual (oudste ondersteunde)
-                        $semiAnnualBuild = $null
-                        if ($OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions -and 
-                            $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions.Count -gt 0) {
-                            # Neem de oudste versie (laatste in de array)
-                            $oldestSemiAnnual = $OfficeMappingForHTML.Data.update_channels.'Semi-Annual Enterprise Channel'.versions[-1]
-                            if ($oldestSemiAnnual.build -match '^(\d+)\.') {
-                                $semiAnnualBuild = [int]$matches[1]
+                        # Als nog steeds geen leeftijd bekend, schat op basis van build verschil
+                        if ($null -eq $versionAge) {
+                            # Schatting: 1 build nummer verschil ≈ 7 dagen
+                            $currentBuild = 19426  # Nieuwste Current Channel build
+                            if ($detectedBuildMajor -lt $currentBuild) {
+                                $versionAge = ($currentBuild - $detectedBuildMajor) * 7
+                            } else {
+                                $versionAge = 0
                             }
                         }
                         
-                        $detectedBuildInt = [int]$detectedBuild
+                        # Gebruik classificatieregels uit mapping bestand
+                        $classificationApplied = $false
                         
-                        # Bepaal kleur en channel op basis van build age
-                        if ($currentChannelBuild -and $detectedBuildInt -ge $currentChannelBuild) {
-                            # Nieuwste versie (Current Channel of nieuwer)
-                            $OfficeColor = "color: #28a745; font-weight: bold;"  # Groen
-                            $OfficeChannel = "Current Channel"
-                        } elseif ($monthlyEnterpriseBuild -and $detectedBuildInt -ge $monthlyEnterpriseBuild) {
-                            # Recent maar niet nieuwste (Monthly Enterprise)
-                            $OfficeColor = "color: #28a745;"  # Groen maar niet bold
-                            $OfficeChannel = "Monthly Enterprise"
-                        } elseif ($semiAnnualBuild -and $detectedBuildInt -ge $semiAnnualBuild) {
-                            # Oudere maar nog ondersteunde versie (Semi-Annual)
-                            $OfficeColor = "color: #ffc107;"  # Oranje (waarschuwing)
-                            $OfficeChannel = "Semi-Annual Enterprise"
-                        } else {
-                            # Zeer oude versie (mogelijk EOL)
-                            $OfficeColor = "color: #dc3545; font-weight: bold;"  # Rood
-                            $OfficeChannel = "Verouderd/EOL"
+                        if ($OfficeMappingForHTML.Data.classification_rules.rules) {
+                            foreach ($rule in $OfficeMappingForHTML.Data.classification_rules.rules | Sort-Object priority) {
+                                $ruleMatches = $false
+                                
+                                # Parse de conditie (simpel - kan uitgebreid worden voor complexere condities)
+                                $condition = $rule.condition
+                                
+                                if ($condition -match 'build >= (\d+) AND build < (\d+) AND age_days > (\d+)') {
+                                    # Build range met leeftijd check (bijvoorbeeld: build >= 19328 AND build < 19426 AND age_days > 30)
+                                    $minBuild = [int]$matches[1]
+                                    $maxBuild = [int]$matches[2]
+                                    $maxAge = [int]$matches[3]
+                                    $ruleMatches = ($detectedBuildMajor -ge $minBuild -and $detectedBuildMajor -lt $maxBuild -and $versionAge -gt $maxAge)
+                                }
+                                elseif ($condition -match 'build >= (\d+) AND build < (\d+) AND age_days <= (\d+)') {
+                                    # Build range met leeftijd check (bijvoorbeeld: build >= 19328 AND build < 19426 AND age_days <= 30)
+                                    $minBuild = [int]$matches[1]
+                                    $maxBuild = [int]$matches[2]
+                                    $maxAge = [int]$matches[3]
+                                    $ruleMatches = ($detectedBuildMajor -ge $minBuild -and $detectedBuildMajor -lt $maxBuild -and $versionAge -le $maxAge)
+                                }
+                                elseif ($condition -match 'build >= (\d+) AND build < (\d+)') {
+                                    # Build range zonder leeftijd
+                                    $minBuild = [int]$matches[1]
+                                    $maxBuild = [int]$matches[2]
+                                    $ruleMatches = ($detectedBuildMajor -ge $minBuild -and $detectedBuildMajor -lt $maxBuild)
+                                }
+                                elseif ($condition -match 'build == (\d+)') {
+                                    # Exacte build match
+                                    $exactBuild = [int]$matches[1]
+                                    $ruleMatches = ($detectedBuildMajor -eq $exactBuild)
+                                }
+                                elseif ($condition -match 'build >= (\d+)') {
+                                    # Build groter of gelijk (bijvoorbeeld: build >= 19426)
+                                    $minBuild = [int]$matches[1]
+                                    $ruleMatches = ($detectedBuildMajor -ge $minBuild)
+                                }
+                                elseif ($condition -match 'build < (\d+)') {
+                                    # Build kleiner dan (bijvoorbeeld: build < 17928)
+                                    $maxBuild = [int]$matches[1]
+                                    $ruleMatches = ($detectedBuildMajor -lt $maxBuild)
+                                }
+                                
+                                if ($ruleMatches) {
+                                    # Pas de regel toe
+                                    $OfficeChannel = $rule.channel
+                                    $OfficeColor = "color: $($rule.color);"
+                                    if ($rule.bold) {
+                                        $OfficeColor += " font-weight: bold;"
+                                    }
+                                    $classificationApplied = $true
+                                    break  # Stop bij de eerste match (regels zijn gesorteerd op prioriteit)
+                                }
+                            }
+                        }
+                        
+                        # Fallback naar oude logica als classificatie regels niet werken
+                        if (-not $classificationApplied) {
+                            if ($detectedBuildMajor -ge 19426) {
+                                $OfficeColor = "color: #28a745; font-weight: bold;"  # Groen bold
+                                $OfficeChannel = "Current Channel"
+                            } elseif ($detectedBuildMajor -ge 19328) {
+                                if ($versionAge -le 30) {
+                                    $OfficeColor = "color: #28a745;"  # Groen
+                                    $OfficeChannel = "Current Channel (recent)"
+                                } else {
+                                    $OfficeColor = "color: #ffc107;"  # Oranje
+                                    $OfficeChannel = "Current Channel (verouderd)"
+                                }
+                            } elseif ($detectedBuildMajor -ge 19127) {
+                                $OfficeColor = "color: #28a745;"  # Groen
+                                $OfficeChannel = "Monthly Enterprise"
+                            } elseif ($detectedBuildMajor -ge 17928) {
+                                $OfficeColor = "color: #ffc107;"  # Oranje
+                                $OfficeChannel = "Semi-Annual Enterprise"
+                            } else {
+                                $OfficeColor = "color: #dc3545; font-weight: bold;"  # Rood bold
+                                $OfficeChannel = "Verouderd/EOL"
+                            }
                         }
                     }
                 } catch {
                     # Bij parse fouten, gebruik default grijs
+                    Write-Host "Error parsing Office version for device: $_" -ForegroundColor Yellow
                     $OfficeColor = "color: #6c757d;"
                     $OfficeChannel = "Onbekend"
                 }

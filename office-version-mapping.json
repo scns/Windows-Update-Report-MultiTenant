@@ -1,181 +1,201 @@
 {
   "metadata": {
-    "version": "1.0.0",
-    "lastUpdated": "2025-12-10",
-    "description": "Microsoft 365 Apps version mapping voor verschillende update channels",
+    "version": "2.0.0",
+    "lastUpdated": "2025-12-15",
+    "description": "Office version mappings voor M365 Apps update channels met uitgebreide versiegeschiedenis",
     "source": "https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft365-apps-by-date",
     "next_update": "2026-01-14"
   },
   "update_channels": {
     "Current Channel": {
-      "description": "Meest recente features en updates, uitgebracht zodra ze klaar zijn",
-      "update_frequency": "Meerdere keren per maand",
+      "description": "Meest recente features zodra deze beschikbaar zijn",
       "current_version": "2511",
       "current_build": "19426.20186",
+      "full_build": "16.0.19426.20186",
       "release_date": "2025-12-09",
-      "release_notes": "https://learn.microsoft.com/en-us/officeupdates/current-channel#version-2511-december-09"
+      "support_end": "Bij release van volgende versie"
     },
     "Monthly Enterprise Channel": {
-      "description": "Nieuwe features eenmaal per maand op voorspelbare basis",
-      "update_frequency": "Maandelijks, tweede dinsdag van de maand",
+      "description": "Nieuwe features eenmaal per maand op voorspelbare wijze",
       "versions": [
         {
           "version": "2510",
           "build": "19328.20266",
+          "full_build": "16.0.19328.20266",
           "release_date": "2025-12-09",
           "end_of_support": "2026-03-10"
         },
         {
           "version": "2509",
           "build": "19231.20274",
-          "release_date": "2025-11-11",
+          "full_build": "16.0.19231.20274",
+          "release_date": "2025-12-09",
           "end_of_support": "2026-02-10"
         },
         {
           "version": "2508",
           "build": "19127.20402",
-          "release_date": "2025-10-14",
-          "end_of_support": "2026-01-13",
-          "note": "Release candidate voor Semi-Annual Enterprise Channel"
+          "full_build": "16.0.19127.20402",
+          "release_date": "2025-12-09",
+          "end_of_support": "2026-01-13"
         }
       ]
     },
     "Semi-Annual Enterprise Channel (Preview)": {
-      "description": "Preview van de volgende Semi-Annual Enterprise Channel release",
-      "update_frequency": "Twee keer per jaar (maart en september)",
+      "description": "Nieuwe features twee keer per jaar (pre-release)",
       "current_version": "2408",
       "current_build": "17928.20392",
+      "full_build": "16.0.17928.20392",
       "release_date": "2025-01-14",
-      "end_of_support": "2026-03-10"
+      "support_end": "Bij release naar Semi-Annual Enterprise Channel"
     },
     "Semi-Annual Enterprise Channel": {
-      "description": "Stabiele versie met uitgebreide test periode, twee keer per jaar",
-      "update_frequency": "Twee keer per jaar (januari en juli)",
+      "description": "Nieuwe features twee keer per jaar (maart en september)",
       "versions": [
         {
           "version": "2502",
           "build": "18526.20672",
-          "release_date": "2025-07-08",
+          "full_build": "16.0.18526.20672",
+          "release_date": "2025-12-09",
           "end_of_support": "2026-03-10"
         },
         {
           "version": "2408",
           "build": "17928.20742",
-          "release_date": "2025-01-14",
+          "full_build": "16.0.17928.20742",
+          "release_date": "2025-12-09",
           "end_of_support": "2026-03-10"
         }
       ]
     }
   },
-  "version_history": [
-    {
-      "date": "2025-12-09",
-      "version": "2511",
-      "build": "19426.20186",
-      "channel": "Current Channel",
-      "highlights": [
-        "Various fixes to functionality and performance",
-        "Security updates"
-      ]
-    },
-    {
-      "date": "2025-12-03",
-      "version": "2511",
-      "build": "19426.20170",
-      "channel": "Current Channel",
-      "highlights": [
-        "Various fixes to functionality and performance"
-      ]
-    },
-    {
-      "date": "2025-11-20",
-      "version": "2510",
-      "build": "19328.20244",
-      "channel": "Current Channel",
-      "highlights": [
-        "Outlook: Fixed issue causing repeated 'Contacting the server' messages"
-      ]
-    },
-    {
-      "date": "2025-11-18",
-      "version": "2510",
-      "build": "19328.20232",
-      "channel": "Current Channel",
-      "highlights": [
-        "Various fixes to functionality and performance"
-      ]
-    },
-    {
-      "date": "2025-11-11",
-      "version": "2510",
-      "build": "19328.20190",
-      "channel": "Current Channel",
-      "highlights": [
-        "Security updates",
-        "Outlook: Fixed @mention search issue"
-      ]
-    }
-  ],
-  "recommended_versions": {
-    "enterprise_stable": {
-      "channel": "Semi-Annual Enterprise Channel",
-      "version": "2408",
-      "build": "17928.20742",
-      "reason": "Meest stabiele versie voor enterprise omgevingen met langere test cyclus"
-    },
-    "enterprise_monthly": {
-      "channel": "Monthly Enterprise Channel",
-      "version": "2510",
-      "build": "19328.20266",
-      "reason": "Balans tussen stabiliteit en nieuwe features op voorspelbare basis"
-    },
-    "latest_features": {
-      "channel": "Current Channel",
-      "version": "2511",
-      "build": "19426.20186",
-      "reason": "Nieuwste features en fixes, geschikt voor early adopters"
-    }
+  "version_history": {
+    "description": "Historische versies voor nauwkeurigere detectie - laatste 12 maanden Current Channel",
+    "Current Channel": [
+      { "version": "2511", "build": 19426, "full_build": "19426.20186", "release_date": "2025-12-09", "age_days": 0 },
+      { "version": "2511", "build": 19426, "full_build": "19426.20170", "release_date": "2025-12-03", "age_days": 6 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20244", "release_date": "2025-11-20", "age_days": 19 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20232", "release_date": "2025-11-18", "age_days": 21 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20190", "release_date": "2025-11-11", "age_days": 28 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20178", "release_date": "2025-11-04", "age_days": 35 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20158", "release_date": "2025-10-30", "age_days": 40 },
+      { "version": "2509", "build": 19231, "full_build": "19231.20216", "release_date": "2025-10-21", "age_days": 49 },
+      { "version": "2509", "build": 19231, "full_build": "19231.20194", "release_date": "2025-10-14", "age_days": 56 },
+      { "version": "2509", "build": 19231, "full_build": "19231.20172", "release_date": "2025-10-07", "age_days": 63 },
+      { "version": "2509", "build": 19231, "full_build": "19231.20156", "release_date": "2025-10-01", "age_days": 69 },
+      { "version": "2508", "build": 19127, "full_build": "19127.20264", "release_date": "2025-09-23", "age_days": 77 },
+      { "version": "2508", "build": 19127, "full_build": "19127.20240", "release_date": "2025-09-16", "age_days": 84 },
+      { "version": "2508", "build": 19127, "full_build": "19127.20222", "release_date": "2025-09-09", "age_days": 91 },
+      { "version": "2508", "build": 19127, "full_build": "19127.20192", "release_date": "2025-09-03", "age_days": 97 },
+      { "version": "2508", "build": 19127, "full_build": "19127.20154", "release_date": "2025-08-26", "age_days": 105 },
+      { "version": "2507", "build": 19029, "full_build": "19029.20208", "release_date": "2025-08-19", "age_days": 112 },
+      { "version": "2507", "build": 19029, "full_build": "19029.20184", "release_date": "2025-08-12", "age_days": 119 },
+      { "version": "2507", "build": 19029, "full_build": "19029.20156", "release_date": "2025-08-05", "age_days": 126 },
+      { "version": "2507", "build": 19029, "full_build": "19029.20136", "release_date": "2025-07-30", "age_days": 132 },
+      { "version": "2506", "build": 18925, "full_build": "18925.20184", "release_date": "2025-07-22", "age_days": 140 },
+      { "version": "2506", "build": 18925, "full_build": "18925.20168", "release_date": "2025-07-15", "age_days": 147 },
+      { "version": "2506", "build": 18925, "full_build": "18925.20158", "release_date": "2025-07-08", "age_days": 154 },
+      { "version": "2506", "build": 18925, "full_build": "18925.20138", "release_date": "2025-07-01", "age_days": 161 },
+      { "version": "2505", "build": 18827, "full_build": "18827.20176", "release_date": "2025-06-26", "age_days": 166 },
+      { "version": "2505", "build": 18827, "full_build": "18827.20164", "release_date": "2025-06-17", "age_days": 175 },
+      { "version": "2505", "build": 18827, "full_build": "18827.20150", "release_date": "2025-06-10", "age_days": 182 },
+      { "version": "2505", "build": 18827, "full_build": "18827.20140", "release_date": "2025-06-03", "age_days": 189 },
+      { "version": "2505", "build": 18827, "full_build": "18827.20128", "release_date": "2025-05-29", "age_days": 194 },
+      { "version": "2504", "build": 18730, "full_build": "18730.20186", "release_date": "2025-05-20", "age_days": 203 },
+      { "version": "2504", "build": 18730, "full_build": "18730.20168", "release_date": "2025-05-13", "age_days": 210 },
+      { "version": "2504", "build": 18730, "full_build": "18730.20142", "release_date": "2025-05-06", "age_days": 217 },
+      { "version": "2504", "build": 18730, "full_build": "18730.20122", "release_date": "2025-04-29", "age_days": 224 },
+      { "version": "2503", "build": 18623, "full_build": "18623.20208", "release_date": "2025-04-17", "age_days": 236 },
+      { "version": "2503", "build": 18623, "full_build": "18623.20178", "release_date": "2025-04-08", "age_days": 245 },
+      { "version": "2503", "build": 18623, "full_build": "18623.20156", "release_date": "2025-04-02", "age_days": 251 },
+      { "version": "2502", "build": 18526, "full_build": "18526.20168", "release_date": "2025-03-11", "age_days": 273 },
+      { "version": "2502", "build": 18526, "full_build": "18526.20144", "release_date": "2025-03-05", "age_days": 279 },
+      { "version": "2501", "build": 18429, "full_build": "18429.20158", "release_date": "2025-02-11", "age_days": 301 },
+      { "version": "2501", "build": 18429, "full_build": "18429.20132", "release_date": "2025-01-30", "age_days": 313 },
+      { "version": "2412", "build": 18324, "full_build": "18324.20194", "release_date": "2025-01-16", "age_days": 327 },
+      { "version": "2412", "build": 18324, "full_build": "18324.20190", "release_date": "2025-01-14", "age_days": 329 },
+      { "version": "2412", "build": 18324, "full_build": "18324.20168", "release_date": "2025-01-07", "age_days": 336 }
+    ],
+    "Monthly Enterprise Channel": [
+      { "version": "2510", "build": 19328, "full_build": "19328.20266", "release_date": "2025-12-09", "end_of_support": "2026-03-10" },
+      { "version": "2509", "build": 19231, "full_build": "19231.20274", "release_date": "2025-12-09", "end_of_support": "2026-02-10" },
+      { "version": "2509", "build": 19231, "full_build": "19231.20246", "release_date": "2025-11-11", "end_of_support": "2026-02-10" },
+      { "version": "2508", "build": 19127, "full_build": "19127.20402", "release_date": "2025-12-09", "end_of_support": "2026-01-13" },
+      { "version": "2508", "build": 19127, "full_build": "19127.20384", "release_date": "2025-11-14", "end_of_support": "2026-01-13" },
+      { "version": "2508", "build": 19127, "full_build": "19127.20358", "release_date": "2025-11-11", "end_of_support": "2026-01-13" },
+      { "version": "2508", "build": 19127, "full_build": "19127.20314", "release_date": "2025-10-16", "end_of_support": "2026-01-13" },
+      { "version": "2508", "build": 19127, "full_build": "19127.20302", "release_date": "2025-10-14", "end_of_support": "2026-01-13" },
+      { "version": "2507", "build": 19029, "full_build": "19029.20300", "release_date": "2025-11-17", "end_of_support": "2025-12-10" },
+      { "version": "2507", "build": 19029, "full_build": "19029.20274", "release_date": "2025-10-14", "end_of_support": "2025-12-10" },
+      { "version": "2507", "build": 19029, "full_build": "19029.20244", "release_date": "2025-09-09", "end_of_support": "2025-12-10" }
+    ]
   },
-  "build_number_format": {
-    "description": "Office build nummers bestaan uit: YYMM.NNNNN",
-    "examples": {
-      "19426.20186": {
-        "year_month": "1942 (niet gebaseerd op werkelijke datum)",
-        "build_sequence": "6",
-        "revision": "20186"
+  "classification_rules": {
+    "description": "Regels voor het classificeren van Office versies op basis van build number en leeftijd",
+    "rules": [
+      {
+        "name": "Current Channel - Nieuwste",
+        "condition": "build >= 19426",
+        "channel": "Current Channel",
+        "status": "Actueel",
+        "color": "#28a745",
+        "bold": true,
+        "priority": 1
+      },
+      {
+        "name": "Current Channel - Recent (< 30 dagen oud)",
+        "condition": "build >= 19328 AND build < 19426 AND age_days <= 30",
+        "channel": "Current Channel (recent)",
+        "status": "Recent",
+        "color": "#28a745",
+        "bold": false,
+        "priority": 2
+      },
+      {
+        "name": "Current Channel - Verouderd (> 30 dagen oud)",
+        "condition": "build >= 19328 AND build < 19426 AND age_days > 30",
+        "channel": "Current Channel (verouderd)",
+        "status": "Verouderd - update aanbevolen",
+        "color": "#ffc107",
+        "bold": false,
+        "priority": 3
+      },
+      {
+        "name": "Monthly Enterprise - Nieuwste",
+        "condition": "build == 19328",
+        "channel": "Monthly Enterprise",
+        "status": "Actueel",
+        "color": "#28a745",
+        "bold": false,
+        "priority": 4
+      },
+      {
+        "name": "Monthly Enterprise - Ondersteund",
+        "condition": "build >= 19127 AND build < 19328",
+        "channel": "Monthly Enterprise",
+        "status": "Ondersteund",
+        "color": "#28a745",
+        "bold": false,
+        "priority": 5
+      },
+      {
+        "name": "Semi-Annual Enterprise",
+        "condition": "build >= 17928 AND build < 19127",
+        "channel": "Semi-Annual Enterprise",
+        "status": "Ondersteund",
+        "color": "#ffc107",
+        "bold": false,
+        "priority": 6
+      },
+      {
+        "name": "Zeer verouderd / EOL",
+        "condition": "build < 17928",
+        "channel": "Onbekend/Verouderd",
+        "status": "End of Life - direct updaten!",
+        "color": "#dc3545",
+        "bold": true,
+        "priority": 7
       }
-    },
-    "note": "Build nummers volgen niet altijd een directe datum correlatie"
-  },
-  "compatibility": {
-    "windows_10": {
-      "minimum_version": "1809 of hoger",
-      "recommended": "22H2 of nieuwer"
-    },
-    "windows_11": {
-      "minimum_version": "21H2 of hoger",
-      "recommended": "24H2 of nieuwer"
-    },
-    "windows_server": {
-      "supported_versions": [
-        "Windows Server 2019",
-        "Windows Server 2022"
-      ]
-    }
-  },
-  "detection_methods": {
-    "registry": {
-      "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Office\\ClickToRun\\Configuration",
-      "version_key": "VersionToReport",
-      "update_channel_key": "CDNBaseUrl"
-    },
-    "graph_api": {
-      "endpoint": "https://graph.microsoft.com/beta/deviceManagement/managedDevices('{deviceId}')/detectedApps",
-      "filter": "displayName contains 'Microsoft 365' or displayName contains 'Office'"
-    },
-    "file_version": {
-      "path": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
-      "note": "Controleer FileVersion property voor build nummer"
-    }
+    ]
   }
 }
