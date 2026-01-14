@@ -1,11 +1,11 @@
 {
-  "lastUpdated": "2025-12-10",
-  "version": "3.1.5",
+  "lastUpdated": "2026-01-14",
+  "version": "3.2.0",
   "description": "Windows KB Update Mapping voor Build Numbers",
   "source": "https://raw.githubusercontent.com/scns/Windows-Update-Report-MultiTenant/refs/heads/main/kb-mapping.json",
   "warnings": {
     "windows10_eol": "Windows 10 reached End of Life on October 14, 2025. Migrate to Windows 11 as soon as possible.",
-    "next_patch_tuesday": "January 2026 Patch Tuesday: January 14, 2026"
+    "next_patch_tuesday": "February 2026 Patch Tuesday: February 10, 2026"
   },
   "preview": {
    
@@ -40,12 +40,18 @@
         }
       },
       "22631": {
-        "kb": "KB5072033",
-        "date": "2025-12",
+        "kb": "KB5074109",
+        "date": "2026-01",
         "title": "Cumulative Update for Windows 11 23H2",
         "version": "23H2",
-        "releaseDate": "2025-12-09",
+        "releaseDate": "2026-01-14",
         "builds": {
+          "22631.6491": {
+            "kb": "KB5074109",
+            "date": "2026-01",
+            "releaseDate": "2026-01-14",
+            "description": "January 2026 Update"
+          },
           "22631.6345": {
             "kb": "KB5072033",
             "date": "2025-12",
@@ -81,12 +87,18 @@
     },
     "windows11_24h2": {
       "26100": {
-        "kb": "KB5072033",
-        "date": "2025-12",
+        "kb": "KB5074109",
+        "date": "2026-01",
         "title": "Cumulative Update for Windows 11 24H2",
         "version": "24H2",
-        "releaseDate": "2025-12-09",
+        "releaseDate": "2026-01-14",
         "builds": {
+          "26100.7623": {
+            "kb": "KB5074109",
+            "date": "2026-01",
+            "releaseDate": "2026-01-14",
+            "description": "January 2026 Update"
+          },
           "26100.7462": {
             "kb": "KB5072033",
             "date": "2025-12",
@@ -141,12 +153,18 @@
     },
     "windows11_25h2": {
       "26200": {
-        "kb": "KB5072033",
-        "date": "2025-12",
+        "kb": "KB5074109",
+        "date": "2026-01",
         "title": "Cumulative Update for Windows 11 25H2",
         "version": "25H2",
-        "releaseDate": "2025-12-09",
+        "releaseDate": "2026-01-14",
         "builds": {
+          "26200.7623": {
+            "kb": "KB5074109",
+            "date": "2026-01",
+            "releaseDate": "2026-01-14",
+            "description": "January 2026 Update"
+          },
           "26200.7462": {
             "kb": "KB5072033",
             "date": "2025-12",
@@ -397,7 +415,7 @@
   },
   "metadata": {
     "update_frequency": "monthly",
-    "next_update": "2026-01-14",
+    "next_update": "2026-02-10",
     "contact": "info@maarten-schmeitz.nl",
     "source_project": "Windows-Update-Report-MultiTenant"
   }

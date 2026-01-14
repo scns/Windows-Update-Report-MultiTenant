@@ -1,43 +1,43 @@
 {
   "metadata": {
-    "version": "2.0.0",
-    "lastUpdated": "2025-12-15",
+    "version": "2.1.0",
+    "lastUpdated": "2026-01-14",
     "description": "Office version mappings voor M365 Apps update channels met uitgebreide versiegeschiedenis",
     "source": "https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft365-apps-by-date",
-    "next_update": "2026-01-14"
+    "next_update": "2026-02-10"
   },
   "update_channels": {
     "Current Channel": {
       "description": "Meest recente features zodra deze beschikbaar zijn",
-      "current_version": "2511",
-      "current_build": "19426.20186",
-      "full_build": "16.0.19426.20186",
-      "release_date": "2025-12-09",
+      "current_version": "2512",
+      "current_build": "19530.20144",
+      "full_build": "16.0.19530.20144",
+      "release_date": "2026-01-13",
       "support_end": "Bij release van volgende versie"
     },
     "Monthly Enterprise Channel": {
       "description": "Nieuwe features eenmaal per maand op voorspelbare wijze",
       "versions": [
         {
+          "version": "2511",
+          "build": "19426.20260",
+          "full_build": "16.0.19426.20260",
+          "release_date": "2026-01-13",
+          "end_of_support": "2026-04-14"
+        },
+        {
           "version": "2510",
-          "build": "19328.20266",
-          "full_build": "16.0.19328.20266",
-          "release_date": "2025-12-09",
+          "build": "19328.20292",
+          "full_build": "16.0.19328.20292",
+          "release_date": "2026-01-13",
           "end_of_support": "2026-03-10"
         },
         {
           "version": "2509",
-          "build": "19231.20274",
-          "full_build": "16.0.19231.20274",
-          "release_date": "2025-12-09",
+          "build": "19231.20300",
+          "full_build": "16.0.19231.20300",
+          "release_date": "2026-01-13",
           "end_of_support": "2026-02-10"
-        },
-        {
-          "version": "2508",
-          "build": "19127.20402",
-          "full_build": "16.0.19127.20402",
-          "release_date": "2025-12-09",
-          "end_of_support": "2026-01-13"
         }
       ]
     },
@@ -53,17 +53,24 @@
       "description": "Nieuwe features twee keer per jaar (maart en september)",
       "versions": [
         {
+          "version": "2508",
+          "build": "19127.20484",
+          "full_build": "16.0.19127.20484",
+          "release_date": "2026-01-13",
+          "end_of_support": "2026-09-08"
+        },
+        {
           "version": "2502",
-          "build": "18526.20672",
-          "full_build": "16.0.18526.20672",
-          "release_date": "2025-12-09",
+          "build": "18526.20696",
+          "full_build": "16.0.18526.20696",
+          "release_date": "2026-01-13",
           "end_of_support": "2026-03-10"
         },
         {
           "version": "2408",
-          "build": "17928.20742",
-          "full_build": "16.0.17928.20742",
-          "release_date": "2025-12-09",
+          "build": "17928.20762",
+          "full_build": "16.0.17928.20762",
+          "release_date": "2026-01-13",
           "end_of_support": "2026-03-10"
         }
       ]
@@ -72,13 +79,13 @@
   "version_history": {
     "description": "Historische versies voor nauwkeurigere detectie - laatste 12 maanden Current Channel",
     "Current Channel": [
-      { "version": "2511", "build": 19426, "full_build": "19426.20186", "release_date": "2025-12-09", "age_days": 0 },
-      { "version": "2511", "build": 19426, "full_build": "19426.20170", "release_date": "2025-12-03", "age_days": 6 },
-      { "version": "2510", "build": 19328, "full_build": "19328.20244", "release_date": "2025-11-20", "age_days": 19 },
-      { "version": "2510", "build": 19328, "full_build": "19328.20232", "release_date": "2025-11-18", "age_days": 21 },
-      { "version": "2510", "build": 19328, "full_build": "19328.20190", "release_date": "2025-11-11", "age_days": 28 },
-      { "version": "2510", "build": 19328, "full_build": "19328.20178", "release_date": "2025-11-04", "age_days": 35 },
-      { "version": "2510", "build": 19328, "full_build": "19328.20158", "release_date": "2025-10-30", "age_days": 40 },
+      { "version": "2512", "build": 19530, "full_build": "19530.20144", "release_date": "2026-01-13", "age_days": 0 },
+      { "version": "2512", "build": 19530, "full_build": "19530.20138", "release_date": "2026-01-08", "age_days": 5 },
+      { "version": "2511", "build": 19426, "full_build": "19426.20218", "release_date": "2025-12-16", "age_days": 28 },
+      { "version": "2511", "build": 19426, "full_build": "19426.20186", "release_date": "2025-12-09", "age_days": 35 },
+      { "version": "2511", "build": 19426, "full_build": "19426.20170", "release_date": "2025-12-03", "age_days": 41 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20244", "release_date": "2025-11-20", "age_days": 54 },
+      { "version": "2510", "build": 19328, "full_build": "19328.20232", "release_date": "2025-11-18", "age_days": 56 },
       { "version": "2509", "build": 19231, "full_build": "19231.20216", "release_date": "2025-10-21", "age_days": 49 },
       { "version": "2509", "build": 19231, "full_build": "19231.20194", "release_date": "2025-10-14", "age_days": 56 },
       { "version": "2509", "build": 19231, "full_build": "19231.20172", "release_date": "2025-10-07", "age_days": 63 },
@@ -118,17 +125,17 @@
       { "version": "2412", "build": 18324, "full_build": "18324.20168", "release_date": "2025-01-07", "age_days": 336 }
     ],
     "Monthly Enterprise Channel": [
+      { "version": "2511", "build": 19426, "full_build": "19426.20260", "release_date": "2026-01-13", "end_of_support": "2026-04-14" },
+      { "version": "2510", "build": 19328, "full_build": "19328.20292", "release_date": "2026-01-13", "end_of_support": "2026-03-10" },
       { "version": "2510", "build": 19328, "full_build": "19328.20266", "release_date": "2025-12-09", "end_of_support": "2026-03-10" },
+      { "version": "2509", "build": 19231, "full_build": "19231.20300", "release_date": "2026-01-13", "end_of_support": "2026-02-10" },
       { "version": "2509", "build": 19231, "full_build": "19231.20274", "release_date": "2025-12-09", "end_of_support": "2026-02-10" },
       { "version": "2509", "build": 19231, "full_build": "19231.20246", "release_date": "2025-11-11", "end_of_support": "2026-02-10" },
       { "version": "2508", "build": 19127, "full_build": "19127.20402", "release_date": "2025-12-09", "end_of_support": "2026-01-13" },
       { "version": "2508", "build": 19127, "full_build": "19127.20384", "release_date": "2025-11-14", "end_of_support": "2026-01-13" },
       { "version": "2508", "build": 19127, "full_build": "19127.20358", "release_date": "2025-11-11", "end_of_support": "2026-01-13" },
-      { "version": "2508", "build": 19127, "full_build": "19127.20314", "release_date": "2025-10-16", "end_of_support": "2026-01-13" },
-      { "version": "2508", "build": 19127, "full_build": "19127.20302", "release_date": "2025-10-14", "end_of_support": "2026-01-13" },
       { "version": "2507", "build": 19029, "full_build": "19029.20300", "release_date": "2025-11-17", "end_of_support": "2025-12-10" },
-      { "version": "2507", "build": 19029, "full_build": "19029.20274", "release_date": "2025-10-14", "end_of_support": "2025-12-10" },
-      { "version": "2507", "build": 19029, "full_build": "19029.20244", "release_date": "2025-09-09", "end_of_support": "2025-12-10" }
+      { "version": "2507", "build": 19029, "full_build": "19029.20274", "release_date": "2025-10-14", "end_of_support": "2025-12-10" }
     ]
   },
   "classification_rules": {
@@ -136,7 +143,7 @@
     "rules": [
       {
         "name": "Current Channel - Nieuwste",
-        "condition": "build >= 19426",
+        "condition": "build >= 19530",
         "channel": "Current Channel",
         "status": "Actueel",
         "color": "#28a745",
@@ -145,7 +152,7 @@
       },
       {
         "name": "Current Channel - Recent (< 30 dagen oud)",
-        "condition": "build >= 19328 AND build < 19426 AND age_days <= 30",
+        "condition": "build >= 19426 AND build < 19530 AND age_days <= 30",
         "channel": "Current Channel (recent)",
         "status": "Recent",
         "color": "#28a745",
@@ -154,7 +161,7 @@
       },
       {
         "name": "Current Channel - Verouderd (> 30 dagen oud)",
-        "condition": "build >= 19328 AND build < 19426 AND age_days > 30",
+        "condition": "build >= 19426 AND build < 19530 AND age_days > 30",
         "channel": "Current Channel (verouderd)",
         "status": "Verouderd - update aanbevolen",
         "color": "#ffc107",
@@ -163,7 +170,7 @@
       },
       {
         "name": "Monthly Enterprise - Nieuwste",
-        "condition": "build == 19328",
+        "condition": "build == 19426",
         "channel": "Monthly Enterprise",
         "status": "Actueel",
         "color": "#28a745",
@@ -172,7 +179,7 @@
       },
       {
         "name": "Monthly Enterprise - Recent",
-        "condition": "build >= 19231 AND build < 19328",
+        "condition": "build >= 19328 AND build < 19426",
         "channel": "Monthly Enterprise (recent)",
         "status": "Recent maar niet nieuwste",
         "color": "#28a745",
@@ -181,7 +188,7 @@
       },
       {
         "name": "Monthly Enterprise - Verouderd",
-        "condition": "build >= 19127 AND build < 19231",
+        "condition": "build >= 19231 AND build < 19328",
         "channel": "Monthly Enterprise (verouderd)",
         "status": "Verouderd - update aanbevolen",
         "color": "#ffc107",
@@ -190,7 +197,7 @@
       },
       {
         "name": "Oude Current Channel versies",
-        "condition": "build >= 18324 AND build < 19127",
+        "condition": "build >= 18324 AND build < 19231",
         "channel": "Current Channel (zeer verouderd)",
         "status": "Zeer verouderd - direct updaten!",
         "color": "#dc3545",
