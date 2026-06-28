@@ -19,7 +19,7 @@ jobs:
     
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Label PRs based on file changes
       - name: 🏷️ Label PR based on changed files
